@@ -1,0 +1,23 @@
+Randori
+Copyright 2026 the Randori authors
+
+This product is licensed under the Apache License, Version 2.0 (LICENSE),
+except for the vendored code below, which keeps its own licence.
+
+Sources/RandoriReplayCodec/vendor: a C subset of zlib 1.1.4
+  Copyright (C) 1995-2002 Jean-loup Gailly and Mark Adler
+  zlib licence (the notice retained in vendor/zlib.h): this software is
+  provided 'as-is', without any express or implied warranty. Permission is
+  granted to anyone to use this software for any purpose, including commercial
+  applications, and to alter it and redistribute it freely, subject to the
+  restrictions stated there. Altered files (zconf.h, zutil.h) are marked.
+
+Sources/CALAC/vendor: the decoder of Apple's ALAC reference codec
+  Copyright (c) 2011 Apple Inc. All rights reserved.
+  Licensed under the Apache License, Version 2.0 (vendor/LICENSE).
+  NTSDALAC.cpp, the C interface, is this project's.
+
+Little Fighter 2 is by Marti Wong and Starsky Wong. Little Fighter 2
+Remastered is a product of Little Fighter Co Pty Ltd. Naruto: The Setting Dawn
+is by its authors. This project is not affiliated with or endorsed by them and
+contains none of their content.

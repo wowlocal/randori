@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Build and test (debug)
+        run: swift test
+      - name: Build and test (release)
+        run: swift test -c release -Xswiftc -enable-testing
+
+  linux:
+    runs-on: ubuntu-24.04
+    container: swift:6.4.0-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test as a regular user
+        # The tests check a permission-0 directory, which root can still read.
+        run: |
+          useradd -m runner-tests
+          chown -R runner-tests .
+          su runner-tests -c "HOME=/home/runner-tests swift test"
