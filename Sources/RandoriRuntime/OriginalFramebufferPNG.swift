@@ -21,7 +21,9 @@ public enum OriginalFramebufferPNG {
     }
     public static func encode(_ frame: OriginalFramebuffer) -> Data {
         var raw: [UInt8] = []; raw.reserveCapacity((frame.width*3+1)*frame.height)
-        frame.pixels.withUnsafeBytes { p in
+        // The raw-buffer overload by type: with macOS 26's SDK declarations the compiler
+        // finds the closure ambiguous with Data's deprecated typed-pointer overload (ENGINE_SPLIT E8b).
+        frame.pixels.withUnsafeBytes { (p: UnsafeRawBufferPointer) in
             for y in 0..<frame.height {
                 raw.append(0)
                 for x in 0..<frame.width {
