@@ -35,7 +35,7 @@ synthetic content pack that is generated in code (`Tests/RandoriTests/Synthetic`
 
 ## Building
 
-The engine needs Swift 6 and macOS 14 or later, or Linux.
+The engine needs Swift 6.4 or later: Xcode 27, or the swift.org 6.4 toolchain, on macOS 14 or later, or Swift 6.4 on Linux. Older compilers stop at the manifest or the sources.
 
 ```sh
 swift build

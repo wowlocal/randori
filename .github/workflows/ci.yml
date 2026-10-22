@@ -6,15 +6,23 @@ on:
 
 jobs:
   macos:
-    runs-on: macos-15
+    # The engine needs Swift 6.4; the runner's newest Xcode (26.x) is older, so
+    # the swift.org 6.4 toolchain builds against that Xcode's SDK.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+      - name: Install Swift 6.4 (swift.org)
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/swift.pkg" https://download.swift.org/swift-6.4.0-release/xcode/swift-6.4.0-RELEASE/swift-6.4.0-RELEASE-osx.pkg
+          sudo installer -pkg "$RUNNER_TEMP/swift.pkg" -target /
+          TC=$(ls -d /Library/Developer/Toolchains/swift-6.4*.xctoolchain | head -1)
+          echo "TOOLCHAINS=$(plutil -extract CFBundleIdentifier raw "$TC/Info.plist")" >> "$GITHUB_ENV"
       - name: Swift version
         run: swift --version
       - name: Build and test (debug)
-        run: swift test
+        run: swift test --build-system native
       - name: Build and test (release)
-        run: swift test -c release -Xswiftc -enable-testing
+        run: swift test --build-system native -c release -Xswiftc -enable-testing
 
   linux:
     runs-on: ubuntu-24.04
