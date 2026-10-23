@@ -95,8 +95,9 @@ public extension OriginalRuntimeSessionHost {
 /// loading boundary; `--exit-after-network-ready` stops there before loading.
 /// `--loaded-script "N action args; ..."` uses completed loaded cycles as its
 /// clock, independently of the front-menu handshake's scripted iterations.
-/// `--network-trace PATH` streams socket replies and committed loaded-state
-/// digests; `--summary-capture PATH --exit-after-summary` ends on the result.
+/// `--network-trace PATH` streams committed loaded-state digests (also with
+/// `--no-network`) and, when the network is live, socket replies;
+/// `--summary-capture PATH --exit-after-summary` ends on the result.
 /// `--no-activate` leaves the frontmost app active, for runs beside the
 /// CrossOver original, which takes keys only while its window is in front.
 /// `--network-state-cycles N,N` adds full owned Actor/global bytes and masks
@@ -281,16 +282,20 @@ public enum OriginalRuntimeSessionBoundary: Error, Equatable {
             if !arguments.contains("--original-menu-input") {
                 menu.messages.menuGamepad = OriginalRuntimeMenuGamepad { [unowned self] in self.menuScreen() }
             }
+            // The trace's loaded-state records need no network; its socket
+            // records are added below when the network is live.
+            if let i = arguments.firstIndex(of:"--network-trace"),i+1 < arguments.count {
+                let url = URL(fileURLWithPath:arguments[i+1])
+                try Data().write(to:url,options:.withoutOverwriting)
+                networkTrace = try FileHandle(forWritingTo:url)
+            }
             // Live Winsock for ONLINE GAME (NETWORK_PLAY_PLAN.md); --no-network
             // keeps the declared stand-in (WSAStartup answers wVersion 0).
             if !arguments.contains("--no-network") {
                 let network = OriginalMacRuntimeNetwork(localAddresses:arguments.contains("--network-loopback") ? [0x0100007f] : nil,
                                                         sockets:host.makeSockets()); menu.network = network
                 network.winsock.post = { [weak menu] n in menu?.messages.post(n.message,n.socket,n.lParam) }
-                if let i = arguments.firstIndex(of:"--network-trace"),i+1 < arguments.count {
-                    let url = URL(fileURLWithPath:arguments[i+1])
-                    try Data().write(to:url,options:.withoutOverwriting)
-                    networkTrace = try FileHandle(forWritingTo:url)
+                if networkTrace != nil {
                     network.observeControl = { [unowned self] q,r in
                         try self.trace(["kind":"io","cycle":self.cycles,"request":q.kind.rawValue,
                             "arguments":q.arguments,"data":q.data,"result":r.result,"bytes":r.bytes])
