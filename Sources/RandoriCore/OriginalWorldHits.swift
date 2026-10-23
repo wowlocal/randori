@@ -84,6 +84,16 @@ extension OriginalHitPass {
                         + "user address space of the fixed-base, non-large-address-aware EXE, so Windows ends the game with an access violation here")
                 }
             }
+            // 41f128 reads candidate 0 whether or not one was stored: 41f010 is
+            // the list's only writer before it in a call (421533 writes the same
+            // slots later in the call), so with none the word is stack this call
+            // has not written, and the Windows value, and the Object 41f140 reads
+            // with it, are unknown. The full pool's known fault above comes first
+            // (41f139); the full pool's declared skip does not cover this.
+            guard !candidates.isEmpty else {
+                throw OriginalStateError.invalidStorage("Source state unknown: no item candidate; the random item reads candidate 0 "
+                    + "from stack this call has not written (41f128)")
+            }
             if let slot = free ?? retainedSpawnSlot.map(Int.init) {
             let created = try index(slot),object = candidates[Int(selected)]
             try observe(.reconstruct(slot: slot));try actors[created].reconstructActor()

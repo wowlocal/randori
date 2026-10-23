@@ -103,7 +103,8 @@ struct OriginalHitPass {
         if objectCount > 0 { for n in 0..<Int(objectCount) where try header(n).integer(at: 0x6f4,as: Int32.self) == id { return n } };return nil
     }
     mutating func draw(_ stream: Int32,_ range: Int32,observe: (OriginalHitEvent) throws -> Void) throws -> Int32 {
-        guard range != 0 else { throw OriginalStateError.invalidStorage("Original hit RNG division by zero") }
+        // 417170 answers 0 for a range below 1 and reads and writes neither 450bcc nor 450c34.
+        guard range > 0 else { try observe(.random(stream: stream,range: range,result: 0));return 0 }
         var rng = OriginalRandom(table: try OriginalRandom.table(globals, at: 0x44ff90-0x44d000),
             index: Int(try globals.integer(at: 0x450bcc-0x44d000,as: Int32.self)),counter: Int(try globals.integer(at: 0x450c34-0x44d000,as: Int32.self)),source: "owned hits",sourceSHA256: "")
         try rng.validate();let result = Int32(rng.next(Int(range)))
