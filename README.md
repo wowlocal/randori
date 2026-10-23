@@ -33,6 +33,15 @@ This repository contains no game data, artwork, sound or music. A game
 supplies its content, its content identity and its rules. The tests run on a
 synthetic content pack that is generated in code (`Tests/RandoriTests/Synthetic`).
 
+## Games made with Randori
+
+- [Burn Rate](https://github.com/wowlocal/burn-rate): a 2D brawler in which ten
+  fictional Silicon Valley AI-startup founders fight. It supplies its own
+  fighters, arenas, interface, sound, music, rules and branding, and plays VS,
+  Stage Mode, Championship, 2 on 2, Battle and Demo. It uses this repository
+  as its `Vendor/randori` submodule, so it shows what a new game on the engine
+  needs.
+
 ## Building
 
 The engine needs Swift 6.4 or later: Xcode 27, or the swift.org 6.4 toolchain, on macOS 14 or later, or Swift 6.4 on Linux. Older compilers stop at the manifest or the sources.
