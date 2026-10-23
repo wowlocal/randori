@@ -92,7 +92,8 @@ final class SyntheticHeadlessStartTests: XCTestCase {
 
     /// The session's own front menu on the pack: its scheduled iterations,
     /// run by the test, present the same frame as the driver's (the same
-    /// virtual clock; the session's startup takes the host's time zone).
+    /// virtual clock; the session's startup takes the virtual clock's fixed
+    /// UTC+1 zone, the driver's UTC, and the title frame shows neither).
     func testSessionFrontMenuPresentsTheDriversFrame() throws {
         try Pack.withWrittenPack { root, pack in
             try MainActor.assumeIsolated {

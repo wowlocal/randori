@@ -81,7 +81,9 @@ public extension OriginalRuntimeSessionHost {
 /// Counting uses committed outer iterations.
 /// `--virtual-clock BASE STEP` makes runs reproducible: timeGetTime answers
 /// BASE + STEP × iterations started, startup FILETIME and GetLocalTime use a
-/// fixed date (2026-01-01 00:00 UTC) and GetMessagePos answers (0,0).
+/// fixed date (2026-01-01 00:00 UTC) in a fixed zone (UTC+1 without daylight
+/// time, whatever the host's zone; GetLocalTime reads 01:00) and GetMessagePos
+/// answers (0,0).
 /// `--stage-checkpoints` builds the per-stage snapshots the app never uses.
 /// `--mute-music` plays the original tracks at zero output gain.
 /// `--mute-sounds` keeps the WAV sound-effect voices at zero output gain.
@@ -200,6 +202,10 @@ public enum OriginalRuntimeSessionBoundary: Error, Equatable {
         return (base,step)
     }()
     public static let virtualDate = Date(timeIntervalSince1970:1_767_225_600)
+    /// The virtual clock's zone: the one the NTSD application references were
+    /// recorded in (their replay names read 20260101_010000), now independent of
+    /// the host's zone.
+    public static let virtualZone = TimeZone(secondsFromGMT:3600)!
     private func clock() throws -> UInt32 {
         guard let v = virtualClock else { return try Self.milliseconds() }
         return v.base &+ v.step &* UInt32(truncatingIfNeeded:steps)
@@ -216,7 +222,8 @@ public enum OriginalRuntimeSessionBoundary: Error, Equatable {
     private func startupEnvironment() -> OriginalMacRuntimeStartupService.Environment {
         guard let v = virtualClock else { return .init(joysticks:joystickCount) }
         let fixed = OriginalMacStartupClock.Sample(seconds:Int64(Self.virtualDate.timeIntervalSince1970),nanoseconds:0)
-        return .init(monotonic:{ .init(seconds:Int64(v.base/1000),nanoseconds:Int64(v.base%1000)*1_000_000) },realtime:{ fixed },joysticks:joystickCount)
+        return .init(monotonic:{ .init(seconds:Int64(v.base/1000),nanoseconds:Int64(v.base%1000)*1_000_000) },realtime:{ fixed },
+                     zone:{ Self.virtualZone },joysticks:joystickCount)
     }
     private func cursor() -> (Int32,Int32) { virtualClock == nil ? host.cursorPoint() : (0,0) }
     /// The window's close button: the game's WM_SYSCOMMAND(SC_CLOSE). After a
@@ -407,7 +414,7 @@ public enum OriginalRuntimeSessionBoundary: Error, Equatable {
                     // dialog once; scripted runs never show panels or alerts.
                     if let i = arguments.firstIndex(of:"--playback-file"),i+1 < arguments.count { loading?.playbackFile = arguments[i+1] }
                     loading?.playbackInteractive = !arguments.contains("--script")
-                    if virtualClock != nil { loading?.localDate = { Self.virtualDate } }
+                    if virtualClock != nil { loading?.localDate = { Self.virtualDate }; loading?.localZone = { Self.virtualZone } }
                 }
                 guard let loading else { return }
                 let sleeps = loading.sleeps.count

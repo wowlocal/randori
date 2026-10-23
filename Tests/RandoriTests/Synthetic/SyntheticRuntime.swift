@@ -110,7 +110,8 @@ import CoreGraphics
     /// GetLocalTime's source date (`OriginalMacRuntimeLoading.localDate`), E7f:
     /// the instant whose wall-clock time in the host's zone is the virtual
     /// date's in UTC (2026-01-01 00:00:00). The runtime converts the date in
-    /// the host's zone (OriginalMacRuntimeLoading.swift:414-419), so the
+    /// its `localZone`, the host's unless set (OriginalMacRuntimeLoading.localTime;
+    /// the session's virtual clock sets UTC+1, this driver does not), so the
     /// prelude's replay name, and the recording notices that show it
     /// (OriginalMenuPresentation.swift:286-291), are then the same on every
     /// host. E7d passed the virtual date itself, whose name varied with the

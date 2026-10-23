@@ -70,8 +70,9 @@ public struct OriginalRuntimeLoadingPackages {
     public static let processorSignature: UInt32 = 0x600
     /// Writable files beside the original EXE; nil keeps replay output in memory.
     public var overlay: OriginalMacRuntimeOverlay?
-    /// GetLocalTime's source date; the app pins it for reproducible runs.
+    /// GetLocalTime's source date and zone; the app pins both for reproducible runs.
     public var localDate: () -> Date = { Date() }
+    public var localZone: () -> TimeZone = { .current }
     /// Playback Recording's GetOpenFileNameA: a scripted path (used once), else
     /// an open panel on the overlay's recording folder when interactive, else
     /// a cancelled dialog.
@@ -319,7 +320,7 @@ public struct OriginalRuntimeLoadingPackages {
             allocate:{ _,count,_ in self.counts.allocations += 1; return try heap.allocate(count) },
             bitmap:{ q,_ in try self.bitmap(q) },music:{ e,_ in try self.music(e) },milliseconds:{ _ in try self.time() },
             // War start (43a21f) prepares its match inside the menu call.
-            localTime:{ _ in Self.localTime(self.localDate()) },
+            localTime:{ _ in Self.localTime(self.localDate(),in:self.localZone()) },
             allocateReplay:{ count,_ in self.counts.allocations += 1; return try heap.reserveReplay(count) },
             demoMusicTrack:Self.demoMusicResidue,
             playback:.init(choose:{ _ in self.chooseRecording() },
@@ -410,9 +411,9 @@ public struct OriginalRuntimeLoadingPackages {
         if let last = returned { returned = nil;OriginalDeferredRelease.shared.retire(consume last) }
         return completed
     }
-    /// GetLocalTime from the macOS local calendar (declared runtime source).
-    static func localTime(_ date: Date = Date()) -> OriginalLocalTime {
-        let c = Calendar(identifier:.gregorian).dateComponents(in:.current,from:date)
+    /// GetLocalTime from the host's calendar in `zone` (declared runtime source).
+    static func localTime(_ date: Date = Date(),in zone: TimeZone = .current) -> OriginalLocalTime {
+        let c = Calendar(identifier:.gregorian).dateComponents(in:zone,from:date)
         return .init(year:UInt16(c.year!),month:UInt16(c.month!),dayOfWeek:UInt16(c.weekday!-1),day:UInt16(c.day!),
             hour:UInt16(c.hour!),minute:UInt16(c.minute!),second:UInt16(c.second!),milliseconds:UInt16((c.nanosecond ?? 0)/1_000_000))
     }
@@ -427,7 +428,7 @@ public struct OriginalRuntimeLoadingPackages {
             // (the final selection frame) were not committed and replay with the launch.
             return try session.advance(environment:&unit,bitmaps:self.arenaInputs.bitmaps,outputInput:self.presentation(pending.loading.target),
                 allocateBitmap:{ _,count,_ in self.counts.allocations += 1; return try heap.allocate(count) },
-                bitmap:{ q,_ in try self.bitmap(q) },localTime:{ _ in Self.localTime(self.localDate()) },music:{ e,_ in try self.music(e) },
+                bitmap:{ q,_ in try self.bitmap(q) },localTime:{ _ in Self.localTime(self.localDate(),in:self.localZone()) },music:{ e,_ in try self.music(e) },
                 allocateReplay:{ count,_ in self.counts.allocations += 1; return try heap.reserveReplay(count) },
                 milliseconds:{ _ in try self.time() })
         })
