@@ -38,9 +38,10 @@ synthetic content pack that is generated in code (`Tests/RandoriTests/Synthetic`
 - [Burn Rate](https://github.com/wowlocal/burn-rate): a 2D brawler in which ten
   fictional Silicon Valley AI-startup founders fight. It supplies its own
   fighters, arenas, interface, sound, music, rules and branding, and plays VS,
-  Stage Mode, Championship, 2 on 2, Battle and Demo. It uses this repository
-  as its `Vendor/randori` submodule, so it shows what a new game on the engine
-  needs.
+  Stage Mode, Championship, 2 on 2, Battle and Demo. Its Stage Mode is a
+  six-act story campaign: one stage set per act, each on its own arena, and an
+  epilogue on the ENDING pages. It uses this repository as its
+  `Vendor/randori` submodule, so it shows what a new game on the engine needs.
 
 ## Building
 
