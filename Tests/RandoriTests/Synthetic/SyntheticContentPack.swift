@@ -88,9 +88,9 @@ struct SyntheticContentPack {
         RecordWord(offset: 0x44d03c, value: 0xe7f, check: "OriginalReplayRecording.swift:91; OriginalReplayPlayback.swift:166; OriginalInputControl.swift:150"),
     ]
 
-    static func initialRecord() -> [UInt8] {
+    static func initialRecord(extra: [RecordWord] = []) -> [UInt8] {
         var bytes = [UInt8](repeating: 0, count: OriginalRecordLayout.size)
-        for word in recordWords {
+        for word in recordWords + extra {
             for i in 0..<4 { bytes[word.offset - OriginalRecordLayout.base + i] = UInt8(truncatingIfNeeded: word.value >> (8*i)) }
         }
         return bytes
@@ -302,14 +302,15 @@ struct SyntheticContentPack {
 
     // MARK: Generation
 
-    /// The whole pack, in memory.
-    static func make() throws -> SyntheticContentPack {
+    /// The whole pack, in memory. A variant (E10's branding tests) may name
+    /// other rules and more record words; the defaults are the shared pack.
+    static func make(rules: OriginalGameRules = .syntheticPack, extraRecordWords: [RecordWord] = []) throws -> SyntheticContentPack {
         let exe = exeSHA256
         var packages: [String: [String: [UInt8]]] = [:]
 
         // OriginalStartup (OriginalApplicationStartupInputs.load).
         var startupFiles: [String: [UInt8]] = [:]
-        startupFiles["initial.bin"] = initialRecord()
+        startupFiles["initial.bin"] = initialRecord(extra: extraRecordWords)
         startupFiles["initial.mask"] = [UInt8](repeating: 1, count: OriginalRecordLayout.size)
         for n in 1...13 {   // MENU_BACK%d, 1...13 (OriginalMenuBackground.swift:17-20)
             startupFiles["bitmaps/MENU_BACK\(n).dib"] = SyntheticMedia.panel(width: 64, height: 48,
@@ -453,7 +454,7 @@ struct SyntheticContentPack {
             startup: .init(manifestSHA256: digest(startupManifest), entries: startupEntries.count, absentFiles: absentFiles),
             loadingManifestSHA256: digest(loadingManifest), interfaceManifestSHA256: digest(interface.manifest),
             menuManifestSHA256: digest(menu.manifest), warMenuManifestSHA256: digest(war.manifest),
-            arenaManifestSHA256: digest(arenaManifest), rules: .syntheticPack)
+            arenaManifestSHA256: digest(arenaManifest), rules: rules)
         return .init(packages: packages, identity: identity)
     }
 
@@ -483,7 +484,10 @@ struct SyntheticContentPack {
 
     /// Runs `body` with the pack written to a fresh temporary folder, removed afterwards.
     static func withWrittenPack<T>(_ body: (URL, SyntheticContentPack) throws -> T) throws -> T {
-        let pack = try shared.get()
+        try withWritten(shared.get(), body)
+    }
+    /// The same with a given pack (a variant from `make`).
+    static func withWritten<T>(_ pack: SyntheticContentPack, _ body: (URL, SyntheticContentPack) throws -> T) throws -> T {
         let root = temporaryParent.appendingPathComponent("ntsd-synthetic-pack-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try pack.write(to: root)

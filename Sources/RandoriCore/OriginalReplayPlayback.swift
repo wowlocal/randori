@@ -150,8 +150,10 @@ public enum OriginalReplayPlayback {
     /// 4326c7..4328c6 after 43dfa0: the recording's data checksum (+0x744 vs
     /// 44f620) and version (+0x748 vs 44d03c), then the War settings packed in
     /// +0x8c0 (displays, strengths, defense multipliers; the last divisor is
-    /// EBX = 100 set at 432355 by the mode confirmation) and menu 0.
-    public static func start(recording: OriginalStateRecord, globals: inout OriginalStateRecord) throws -> Start {
+    /// EBX = 100 set at 432355 by the mode confirmation) and menu 0. The
+    /// rejections name the game by `branding.shortName` (ENGINE_SPLIT E10).
+    public static func start(recording: OriginalStateRecord, globals: inout OriginalStateRecord,
+                             branding: OriginalGameRules.Branding = .lf2) throws -> Start {
         let base = OriginalMatchPreparation.globalBase
         var state = globals
         func g(_ a: Int) throws -> Int32 { try state.integer(at: a-base,as: Int32.self) }
@@ -161,7 +163,9 @@ public enum OriginalReplayPlayback {
             globals = state;return .rejected(message: message)
         }
         if try recording.integer(at: 0x744,as: Int32.self) != g(0x44f620) {
-            return try reject(Array("Error!  Recording file are recorded in a LF2 with some data files (character or stage files) different from yours.  Your LF2 has to use the same set of data files in order in replay this recording file!".utf8))
+            return try reject(Array("Error!  Recording file are recorded in a ".utf8) + branding.shortName
+                + Array(" with some data files (character or stage files) different from yours.  Your ".utf8) + branding.shortName
+                + Array(" has to use the same set of data files in order in replay this recording file!".utf8))
         }
         let recorded = try recording.integer(at: 0x748,as: Int32.self),current = try g(0x44d03c)
         if recorded != current {
@@ -169,7 +173,8 @@ public enum OriginalReplayPlayback {
             if recorded == 0x1e { theirs = "v2.0" }
             if recorded > current { theirs = "a newer version" }
             if current == 0x1e { yours = "v2.0" }
-            return try reject(Array("Version error.  Recording file are recorded in \(theirs). (your LF2 is \(yours))!".utf8))
+            return try reject(Array("Version error.  Recording file are recorded in \(theirs). (your ".utf8) + branding.shortName
+                + Array(" is \(yours))!".utf8))
         }
         let v = try recording.integer(at: 0x8c0,as: Int32.self)
         try setG(0x44d380,v/10_000_000 &- 1)

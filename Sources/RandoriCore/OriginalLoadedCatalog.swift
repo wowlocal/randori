@@ -158,7 +158,7 @@ public struct OriginalLoadedCatalog {
         var objects: [OriginalLoadedObject] = [], backgrounds = backgroundBacking
         var stageLoader = try OriginalStageLoader(backing: stageBacking)
         let registry = try OriginalCatalogRegistry(source: source, fileName: fileName.unicodeScalars.map { UInt8($0.value) },
-                                                   initialChecksum: initialChecksum, backing: parentBacking,
+                                                   initialChecksum: initialChecksum, backing: parentBacking, branding: rules.branding,
                                                    beforeRead: { try onProgress(.catalogOpen) },
                                                    onRead: fileSession.map { session in { try session.readCatalog($0) } },
                                                    onChecksum: { try onChecksum(fileName, $0) },

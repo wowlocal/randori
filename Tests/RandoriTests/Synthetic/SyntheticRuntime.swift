@@ -97,7 +97,15 @@ import CoreGraphics
     static let fixedRealtime = OriginalMacStartupClock.Sample(seconds: Int64(OriginalRuntimeSession.virtualDate.timeIntervalSince1970), nanoseconds: 0)
     private(set) var steps = 0, committed = 0, cycles = 0, gameplayBodies = 0, musicEnds = 0
     /// MessageBoxA, ShellExecuteA and dialog requests of the run, in order.
-    final class Log { var shown: [String] = [] }
+    final class Log {
+        var shown: [String] = []
+        /// Every distinct string TextOutA draws, in first-drawn order (the
+        /// display backend asks for each string's mask once; E10's branding tests).
+        var texts: [[UInt8]] { lock.withLock { drawn } }
+        private var drawn: [[UInt8]] = []
+        private let lock = NSLock()
+        func drew(_ bytes: [UInt8]) { lock.withLock { drawn.append(bytes) } }
+    }
     let log = Log()
 
     /// Scripted input: a key (by VK, the lowest Mac key with it, as
@@ -139,7 +147,10 @@ import CoreGraphics
         let log = self.log
         func box(_ text: [UInt8], _ caption: [UInt8]) { log.shown.append("box " + String(decoding: caption, as: UTF8.self) + ": " + String(decoding: text, as: UTF8.self)) }
         let host = OriginalRuntimeStartupHost(windows: windowHost,
-            textMask: glyphs ? SyntheticGlyphs.mask : { _ in .init(advance: 0, originX: 0, originY: 0, width: 0, height: 0, bits: []) },
+            textMask: { bytes in
+                log.drew(bytes)
+                return glyphs ? SyntheticGlyphs.mask(bytes) : .init(advance: 0, originX: 0, originY: 0, width: 0, height: 0, bits: [])
+            },
             messageBox: { box($0, $1) })
         started = try OriginalMacRuntimeStartup.run(inputs: startupInputs, overlay: overlay, environment: environment, host: host)
         started.display.pipelinesBackFill = false
@@ -253,9 +264,9 @@ import CoreGraphics
     // MARK: The scripted VS match (rungs 1 and 3)
 
     /// The front menu's START row (OriginalMainMenu.swift:155-163: x 276-520,
-    /// y [0x453da4]+202+15...39), clicked at committed iteration 8.
-    func clickStart() throws {
-        click(x: 398, y: try global(0x453da4) &+ 202 &+ 27, at: 8)
+    /// y [0x453da4]+202+15...39), clicked at committed iteration 8 (or `at`).
+    func clickStart(at: Int = 8) throws {
+        click(x: 398, y: try global(0x453da4) &+ 202 &+ 27, at: at)
     }
     /// The loaded cycles of the scripted VS start, found by running it and
     /// pinned in SyntheticVSMatchTests. Player 1 confirms VS on the mode screen

@@ -13,10 +13,12 @@ public enum OriginalNetworkMenu {
     }
     /// Buffer external effects until the encompassing tick commits. Throwing
     /// providers or late observers preserve every supplied state, including DC,
-    /// caller text bytes and resource ownership.
+    /// caller text bytes and resource ownership. `branding`: the game's forum
+    /// link (ENGINE_SPLIT E10).
     public static func run(world: inout OriginalStateRecord,hostname: inout OriginalStateRecord,
         globals: inout OriginalStateRecord,local: inout OriginalStateRecord,
         libraryText: inout OriginalLibSurfaceText,memory: inout OriginalMenuPresentationMemory,input: Input,
+        branding: OriginalGameRules.Branding = .lf2,
         background: (inout OriginalStateRecord,inout OriginalMenuPresentationMemory) throws -> Void,
         draw: ([UInt32],OriginalMenuPresentationMemory) throws -> Void,fill: ([UInt32]) throws -> Void,
         timer: () throws -> UInt32,keyState: (UInt32) throws -> Int32,
@@ -106,7 +108,7 @@ public enum OriginalNetworkMenu {
                 try bitmap(0x45117c,368,449,3,0)
                 if try clicked() {
                     try sound(0x455610);try event("sleep",[300])
-                    try event("shell",[0,0,0,1],[Array("open".utf8),Array("http://lf2.net/forum".utf8)])
+                    try event("shell",[0,0,0,1],[Array("open".utf8),branding.forum])
                 }
             } else { try bitmap(0x45117c,368,449,4,0) }
             guard try word(0x4546f0) >= 260 && word(0x4546f0) <= 547 else { return commit(.presentation) }

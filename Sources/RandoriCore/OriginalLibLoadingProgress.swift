@@ -5,9 +5,11 @@ public enum OriginalLibLoadingProgress {
         public let result: Int32, bytes: [UInt8]
         public init(result: Int32 = 0,bytes: [UInt8] = []) { self.result = result;self.bytes = bytes }
     }
-    /// `labels`: the library's loading labels, the game's data (OriginalLibData, E6d-2).
+    /// `labels`: the library's loading labels, the game's data (OriginalLibData, E6d-2);
+    /// `branding`: the game's advertising link (ENGINE_SPLIT E10).
     public static func update(globals: inout OriginalStateRecord, libraryText: inout OriginalLibSurfaceText,
-        input: OriginalMenuPresentationInput, labels: OriginalLibData.LoadingLabels, time: () throws -> UInt32,
+        input: OriginalMenuPresentationInput, labels: OriginalLibData.LoadingLabels,
+        branding: OriginalGameRules.Branding = .lf2, time: () throws -> UInt32,
         panelFirstWord: (UInt32) throws -> UInt32,
         draw: ([UInt32]) throws -> Void, fillBacking: () throws -> [UInt8],
         performFill: (OriginalSurfaceFillRequest) throws -> Int32,
@@ -89,7 +91,7 @@ public enum OriginalLibLoadingProgress {
         try bitmap(0x451188,0,535,14)
         if try word(0x4546f0) &- 1 <= 145 && signed(0x453cdc) >= 535 {
             try bitmap(0x451188,0,535,13)
-            try click(Array("http://www.littlefighter.com/advertise".utf8))
+            try click(branding.advertise)
         }
         try put(0x4511b8,word(0x457580))
         try bitmap(0x451170,min(775,signed(0x4546f0)),min(535,signed(0x453cdc) &+ 2),-1)

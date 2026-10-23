@@ -546,22 +546,102 @@ public struct OriginalGameRules: Equatable, Sendable {
             self.dashJumper = dashJumper; self.shortDasher = shortDasher
         }
     }
+    /// The game's own strings where the EXE model shows, opens or stores one
+    /// (ENGINE_SPLIT E10): LF2 2.0a's (`.lf2`, its EXE's) by default. Each is a
+    /// byte string as the EXE passes it, without a NUL:
+    /// - windowClass, windowTitle: CreateWindowExA's class and window names
+    ///   (OriginalWindowInitialization; the host shows the title). Only the
+    ///   createWindow request carries their bytes: RegisterClassA's request
+    ///   carries the WNDCLASSA, whose name fields are the EXE's pointer, and
+    ///   createWindow's words still hold LF2's string addresses (0x447634,
+    ///   0x447620) beside the game's bytes. Printable ASCII: Windows takes the
+    ///   title as ANSI, and the runtime's hosts decode it as UTF-8;
+    /// - shortName: replaces three EXE literals, the quit MessageBoxA's caption
+    ///   (OriginalWindowInput) and the game's name in the replay loader's two
+    ///   rejection texts (OriginalReplayPlayback). Printable ASCII;
+    /// - credits: the three credit lines the front and mode screens draw
+    ///   (OriginalFrontScreenBody, OriginalModeScreen; the third is also the
+    ///   demo's notice, OriginalPostHUDNotices). The EXE holds each obfuscated
+    ///   (`encodedCredits`) and copies it in fixed chunks, so each line has
+    ///   exactly its `creditLengths` printable ASCII characters. The screens'
+    ///   clickable spans are fixed too: the third line at x > 591 opens
+    ///   `creditLinks[0]`; the first line's bytes 3..<13, highlighted while
+    ///   611 < x < 686, open `creditLinks[1]`, and its bytes 15..<27, highlighted
+    ///   while x > 692, open `creditLinks[2]`. A game's first line places its
+    ///   two names at those bytes;
+    /// - creditLinks: those three URLs, in that order;
+    /// - website (OriginalMainMenu), controlHelp (OriginalFrontControlSettings),
+    ///   recordingHelp and challenge (OriginalFrontRecordingInfo), advertise
+    ///   (OriginalLibLoadingProgress), forum (OriginalNetworkMenu): the URLs those
+    ///   screens open;
+    /// - builtInBackgroundName: background 99's name (OriginalCatalogRegistry), at
+    ///   most 29 bytes, as a loaded background's (OriginalBackgroundLoader).
+    public struct Branding: Equatable, Sendable {
+        /// A field the engine's model of the EXE cannot hold.
+        public struct Invalid: Error, Equatable, Sendable {
+            public let field: String
+            public init(field: String) { self.field = field }
+        }
+        /// The credit lines' lengths, without their NULs.
+        public static let creditLengths = [27, 30, 28]
+        public let windowClass: [UInt8], windowTitle: [UInt8], shortName: [UInt8]
+        public let credits: [[UInt8]], creditLinks: [[UInt8]]
+        public let website: [UInt8], controlHelp: [UInt8], recordingHelp: [UInt8], challenge: [UInt8]
+        public let advertise: [UInt8], forum: [UInt8]
+        public let builtInBackgroundName: [UInt8]
+        /// The credit lines as the EXE's literals hold them, each with its NUL:
+        /// byte i is the line's byte plus i & 3 (the screens subtract it again).
+        public let encodedCredits: [[UInt8]]
+        public init(windowClass: [UInt8], windowTitle: [UInt8], shortName: [UInt8], credits: [[UInt8]], creditLinks: [[UInt8]],
+                    website: [UInt8], controlHelp: [UInt8], recordingHelp: [UInt8], challenge: [UInt8], advertise: [UInt8],
+                    forum: [UInt8], builtInBackgroundName: [UInt8]) throws {
+            func printable(_ bytes: [UInt8]) -> Bool { bytes.allSatisfy { (0x20...0x7e).contains($0) } }
+            guard credits.count == Self.creditLengths.count,
+                  zip(credits, Self.creditLengths).allSatisfy({ line, length in line.count == length && printable(line) }) else {
+                throw Invalid(field: "credits")
+            }
+            guard creditLinks.count == 3 else { throw Invalid(field: "creditLinks") }
+            for (field, bytes) in [("windowClass", windowClass), ("windowTitle", windowTitle), ("shortName", shortName)]
+                where !printable(bytes) { throw Invalid(field: field) }
+            let strings: [(String, [UInt8])] = [("website", website), ("controlHelp", controlHelp), ("recordingHelp", recordingHelp),
+                ("challenge", challenge), ("advertise", advertise), ("forum", forum), ("builtInBackgroundName", builtInBackgroundName)]
+                + creditLinks.map { ("creditLinks", $0) }
+            for (field, bytes) in strings where bytes.contains(0) { throw Invalid(field: field) }
+            guard builtInBackgroundName.count <= 29 else { throw Invalid(field: "builtInBackgroundName") }
+            self.init(validated: windowClass, windowTitle: windowTitle, shortName: shortName, credits: credits, creditLinks: creditLinks,
+                      website: website, controlHelp: controlHelp, recordingHelp: recordingHelp, challenge: challenge,
+                      advertise: advertise, forum: forum, builtInBackgroundName: builtInBackgroundName)
+        }
+        /// Fields the public initializer's checks accept (`.lf2`'s: a test runs
+        /// them on it).
+        init(validated windowClass: [UInt8], windowTitle: [UInt8], shortName: [UInt8], credits: [[UInt8]], creditLinks: [[UInt8]],
+             website: [UInt8], controlHelp: [UInt8], recordingHelp: [UInt8], challenge: [UInt8], advertise: [UInt8],
+             forum: [UInt8], builtInBackgroundName: [UInt8]) {
+            self.windowClass = windowClass; self.windowTitle = windowTitle; self.shortName = shortName
+            self.credits = credits; self.creditLinks = creditLinks
+            self.website = website; self.controlHelp = controlHelp; self.recordingHelp = recordingHelp; self.challenge = challenge
+            self.advertise = advertise; self.forum = forum; self.builtInBackgroundName = builtInBackgroundName
+            encodedCredits = credits.map { line in line.enumerated().map { $0.element &+ UInt8($0.offset & 3) } + [0] }
+        }
+    }
     private final class Roles: Sendable {
         let profile: String, reflection: Reflection, armour: Armour, interaction: Interaction, impact: Impact, items: Items, roster: Roster
         let modes: Modes, physics: Physics, drawing: Drawing, effects: Effects, lifecycle: Lifecycle, fusion: Fusion
         let weaponBreak: WeaponBreak, interface: Interface, characterAI: CharacterAI
         let characterAISpecial: any OriginalCharacterAISpecial
         let library: OriginalLibData?
+        let branding: Branding
         init(profile: String, reflection: Reflection, armour: Armour, interaction: Interaction, impact: Impact, items: Items, roster: Roster,
              modes: Modes, physics: Physics, drawing: Drawing, effects: Effects, lifecycle: Lifecycle, fusion: Fusion,
              weaponBreak: WeaponBreak, interface: Interface, characterAI: CharacterAI,
-             characterAISpecial: any OriginalCharacterAISpecial, library: OriginalLibData?) {
+             characterAISpecial: any OriginalCharacterAISpecial, library: OriginalLibData?, branding: Branding) {
             self.profile = profile; self.reflection = reflection; self.armour = armour; self.interaction = interaction; self.impact = impact
             self.items = items; self.roster = roster; self.modes = modes; self.physics = physics; self.drawing = drawing; self.effects = effects
             self.lifecycle = lifecycle; self.fusion = fusion; self.weaponBreak = weaponBreak; self.interface = interface
             self.characterAI = characterAI
             self.characterAISpecial = characterAISpecial
             self.library = library
+            self.branding = branding
         }
     }
     private let roles: Roles
@@ -586,6 +666,8 @@ public struct OriginalGameRules: Equatable, Sendable {
     public var characterAISpecial: any OriginalCharacterAISpecial { roles.characterAISpecial }
     /// The bundled lib.dll's extensions (E6d): NTSD 2.4's; nil for LF2 2.0a.
     public var library: OriginalLibData? { roles.library }
+    /// The game's strings (E10): LF2 2.0a's by default.
+    public var branding: Branding { roles.branding }
     public var reflectable: OriginalIDSet { roles.reflection.reflectable }
     public var reflector: Int32 { roles.reflection.reflector }
     public var rebinder: Int32 { roles.reflection.rebinder }
@@ -681,11 +763,11 @@ public struct OriginalGameRules: Equatable, Sendable {
     public init(profile: String, reflection: Reflection, armour: Armour, interaction: Interaction, impact: Impact, items: Items,
                 roster: Roster, modes: Modes, physics: Physics, drawing: Drawing, effects: Effects, lifecycle: Lifecycle,
                 fusion: Fusion, weaponBreak: WeaponBreak, interface: Interface, characterAI: CharacterAI,
-                characterAISpecial: any OriginalCharacterAISpecial, library: OriginalLibData? = nil) {
+                characterAISpecial: any OriginalCharacterAISpecial, library: OriginalLibData? = nil, branding: Branding) {
         roles = Roles(profile: profile, reflection: reflection, armour: armour, interaction: interaction, impact: impact, items: items,
                       roster: roster, modes: modes, physics: physics, drawing: drawing, effects: effects, lifecycle: lifecycle,
                       fusion: fusion, weaponBreak: weaponBreak, interface: interface, characterAI: characterAI,
-                      characterAISpecial: characterAISpecial, library: library)
+                      characterAISpecial: characterAISpecial, library: library, branding: branding)
     }
     public static func == (a: Self, b: Self) -> Bool {
         a.roles === b.roles || (a.profile == b.profile && a.reflection == b.reflection && a.armour == b.armour && a.interaction == b.interaction
@@ -693,7 +775,7 @@ public struct OriginalGameRules: Equatable, Sendable {
                                 && a.modes == b.modes && a.physics == b.physics
                                 && a.drawing == b.drawing && a.effects == b.effects && a.lifecycle == b.lifecycle && a.fusion == b.fusion
                                 && a.weaponBreak == b.weaponBreak && a.interface == b.interface
-                                && a.characterAI == b.characterAI && a.library == b.library
+                                && a.characterAI == b.characterAI && a.library == b.library && a.branding == b.branding
                                 && ObjectIdentifier(type(of: a.characterAISpecial)) == ObjectIdentifier(type(of: b.characterAISpecial)))
     }
 }

@@ -344,7 +344,7 @@ public struct OriginalApplicationCatalogSession {
                 var globals = try Session.State.slice(state.full,0,OriginalMatchPreparation.globalSize), text = state.libraryText
                 guard let library = inputs.rules.library else { throw OriginalLibData.Required(site:"Loading: the library's labels") }
                 try OriginalLibLoadingProgress.update(globals:&globals,libraryText:&text,input:inputs.presentation,
-                    labels:library.loadingLabels,time:time,panelFirstWord:{ p in
+                    labels:library.loadingLabels,branding:inputs.rules.branding,time:time,panelFirstWord:{ p in
                         guard let a = self.state.memory.allocations[p],a.live else { throw Boundary.input("Loading panel owner") }
                         return try a.storage.integer(at:0,as:UInt32.self)
                     },draw:draw,fillBacking:{ throw Boundary.dependency("Loading fill backing") },

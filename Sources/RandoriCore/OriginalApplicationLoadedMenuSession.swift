@@ -164,6 +164,9 @@ public struct OriginalApplicationLoadedMenuSession {
         /// The game's menu bitmaps, from the attempt's catalog (a `let`: reading it
         /// takes no dynamic access, unlike `model`; ENGINE_SPLIT E5f-2b).
         let menuNames: [String]
+        /// The game's strings (E10), the menu session's (`State.branding`, its
+        /// one source): the mode screen's credits and the replay loader's rejections.
+        let branding: OriginalGameRules.Branding
         let allocation: (AllocationKind,Int,inout E) throws -> OriginalInterfaceAllocation
         let bitmapReply: (API.Request,inout E) throws -> API.Response
         let musicReply: (OriginalMusicEvent,inout E) throws -> OriginalMusicResponse
@@ -207,7 +210,8 @@ public struct OriginalApplicationLoadedMenuSession {
              _ replay: ((Int,inout E) throws -> UInt32)? = nil,
              resuming: PendingMatchPrelude? = nil) throws {
             localTimeReply = localTime;replayReply = replay
-            self.entry = entry;environment = env;state = resuming?.snapshot.state ?? entry.state
+            let menuState = resuming?.snapshot.state ?? entry.state
+            self.entry = entry;environment = env;state = menuState;branding = menuState.branding
             model = resuming?.snapshot.match ?? entry.match;audio = resuming?.snapshot.music ?? entry.music
             menuNames = (resuming?.snapshot.match ?? entry.match).catalog.rules.interface.menuBitmaps
             resources = resuming?.snapshot.resources ?? entry.menuResources
@@ -591,7 +595,7 @@ public struct OriginalApplicationLoadedMenuSession {
             scene.bitmapOwners = owners;scene.bitmapSurfaceOwners = surfaceOwners
             owned.allocations[address] = .init(storage: recording)
             savedPlayback = saved
-            if case .rejected(let message) = try OriginalReplayPlayback.start(recording: recording,globals: &scene.globals) {
+            if case .rejected(let message) = try OriginalReplayPlayback.start(recording: recording,globals: &scene.globals,branding: branding) {
                 try services.alert(message,&environment)
             }
             done()
@@ -627,7 +631,7 @@ public struct OriginalApplicationLoadedMenuSession {
                     _ = try OriginalMenuPanelUpdate.run(globals:&g,content:{ _ in throw Boundary.dependency("Panel content IO") },bitmap:{ _ in throw Boundary.dependency("Panel bitmap IO") },write:{ _,_ in throw Boundary.dependency("Panel write IO") },observe:{ e,_ in try self.front(.init(e.kind,e.arguments)) })
                 },milliseconds:milliseconds,draw:draw,playback:playback.map { services in { g,m in
                     try self.playbackBranch(&g,&m,&musicOwner,services)
-                } },observe:front)
+                } },observe:front,branding:branding)
                 // A playback start rebuilt the World and Actors in the model.
                 world = model.world
             } else {

@@ -38,20 +38,24 @@ public struct OriginalApplicationMenuSession {
         public internal(set) var settings: OriginalSettingsLoading.StartupResult?
         public internal(set) var bitmapInputs: OriginalApplicationBitmapInputs?
         public internal(set) var graphics: OriginalApplicationGraphics?
+        /// The game's strings the menu's screens and window callbacks show or
+        /// open (ENGINE_SPLIT E10), fixed at the start.
+        public let branding: OriginalGameRules.Branding
 
         /// Adopt the already constructed menu parent exactly once. Surface
         /// tokens come from its own CreateSurface responses, never snapshots.
         public init(full: OriginalStateRecord, memory: OriginalMenuPresentationMemory,
                     front: OriginalFrontMenuResources, frontSurfaces: [UInt32:UInt32],
                     earlyScreen: OriginalFrontScreenPrelude, libraryText: OriginalLibSurfaceText,
-                    random: OriginalCRTRandom, screenBody: OriginalFrontScreenBody.StartupResult?) throws {
+                    random: OriginalCRTRandom, screenBody: OriginalFrontScreenBody.StartupResult?,
+                    branding: OriginalGameRules.Branding) throws {
             // Held in parts (B1): the same contents; slices and replaces at a
             // part's extent then share that part's buffers.
             self.full = full.byteCount == OriginalApplicationDispatchEntry.globalSize
                 ? full.partitioned(at: OriginalApplicationMenuSession.partStarts) : full
             self.memory = memory; self.front = front
             self.earlyScreen = earlyScreen; self.libraryText = libraryText
-            self.random = random; self.screenBody = screenBody
+            self.random = random; self.screenBody = screenBody; self.branding = branding
             try validateAliases()
             guard Set(frontSurfaces.keys) == Set(front.bitmaps.keys),
                   Set(front.bitmaps.keys).isDisjoint(with: earlyScreen.bitmaps.keys) else {
@@ -323,6 +327,7 @@ public struct OriginalApplicationMenuSession {
         lifecycle: (OriginalWindowInitialization.Request) throws -> OriginalWindowInitialization.Response = { _ in throw Boundary.dependency("Menu lifecycle") },
         graph: (OriginalGraphEvents.Request) throws -> OriginalGraphEvents.Response = { _ in throw Boundary.dependency("Menu graph events") }) throws -> Outcome {
         try state.validateAliases()
+        let branding = state.branding
         if initializationBitmap != nil,let input = initialization {
             guard input.frontResponses.isEmpty,input.backgroundResponses.isEmpty else {
                 throw Boundary.dependency("Observed bitmap requests cannot mix prepared response arrays")
@@ -475,8 +480,8 @@ public struct OriginalApplicationMenuSession {
                                     let r = try lifecycle(q);try emit(.lifecycle(q,r));return r
                                 },store:store,deliver:{ message,globals,memory in
                                     try OriginalWindowInput.receive(message,globals:&globals,local:&local,memory:&memory,
-                                        request:{ q in try windowDefault(q) },store:store)
-                                })
+                                        request:{ q in try windowDefault(q) },store:store,branding:branding)
+                                },branding:branding)
                         } else if input.message == 0x400 {
                             // 401e90's own stack frame: fresh undefined backing each call,
                             // no global writes; only DefWindowProc joins the window provider.
@@ -509,7 +514,7 @@ public struct OriginalApplicationMenuSession {
                             // path's MessageBoxA, Release, free, PostMessageA and
                             // PostQuitMessage — is answered on the window channel.
                             result = try OriginalWindowInput.receive(input,globals:&g,local:&local,memory:&owned.memory,
-                                request:{ q in try windowDefault(q) },store:store)
+                                request:{ q in try windowDefault(q) },store:store,branding:branding)
                         }
                         owned.graphics = graphics
                         try owned.replace(0,g); try owned.replace(Self.outerStart,local)
@@ -695,7 +700,7 @@ public struct OriginalApplicationMenuSession {
                                 try provider(stage,.init(q.kind.rawValue,q.arguments,q.strings))
                             } },textDidRespond:{ q,r in
                                 try emit(.frontAPI(.init(q.kind.rawValue,q.arguments,q.strings),r))
-                            },observe:event)
+                            },observe:event,branding:branding)
                         try bodyProduced(output); body = output; bodyLocal = output.local
                         if initialization != nil { try bootstrapObserve(.bodyReturn(output,combined(state),library)) }
                         return output.continuation
@@ -732,11 +737,12 @@ public struct OriginalApplicationMenuSession {
                             }
                             if selector == 6 {
                                 try OriginalFrontControlSettings.advance(globals:&state,memory:&memory,input:screen,draw:draw,
-                                    keyState:{ _ in responses.capsLock },reload:reload,write:write,observe:screenEvent)
+                                    keyState:{ _ in responses.capsLock },reload:reload,write:write,observe:screenEvent,branding:branding)
                             } else {
                                 // The font's Blt answers are the ones its blit events just emitted.
                                 try OriginalFrontRecordingInfo.advance(selector:selector,globals:&state,memory:&memory,input:screen,draw:draw,
-                                    blit:{ _ in lastBltResult },keyState:{ _ in responses.capsLock },reload:reload,write:write,observe:screenEvent)
+                                    blit:{ _ in lastBltResult },keyState:{ _ in responses.capsLock },reload:reload,write:write,observe:screenEvent,
+                                    branding:branding)
                             }
                             for c in calls {
                                 if c.kind == "sleep" { _ = try queue(.init(.sleep,c.arguments));try emit(.sleep(c.arguments[0])) }
@@ -754,7 +760,7 @@ public struct OriginalApplicationMenuSession {
                             // requests are answered live (NETWORK_PLAY_PLAN.md N2).
                             let input = OriginalMainMenuInput(targetSurface:game.target,panelWord:nil,network:.init(startupResult:0,version:0,hostnameResult:0,hostname:[],hostEntryAddress:0,addresses:[],socketResult:0,asyncResult:0,bindResult:0,listenResult:0))
                             var calls: [OriginalMainMenuEvent] = []
-                            let end = try OriginalMainMenu.run(world:&w,globals:&state,crt:&random,input:input,network:networkProvider,store:store,worldStored:worldStore,observe:{ e in
+                            let end = try OriginalMainMenu.run(world:&w,globals:&state,crt:&random,input:input,branding:branding,network:networkProvider,store:store,worldStored:worldStore,observe:{ e in
                                 if e.kind == .bitmap { try event(.init("draw",e.arguments));try draw(e.arguments) }
                                 else {
                                     try event(.init(e.kind.rawValue,e.arguments,e.strings))
@@ -810,7 +816,7 @@ public struct OriginalApplicationMenuSession {
                         }
                         let end = try OriginalNetworkMenu.run(world:&world,hostname:&host,globals:&g,local:&local,libraryText:&library,memory:&memory,
                             input:.init(selector:selector,worldAddress:0x458b00,drawTarget:game.target,dcResult:responses.dcResult,dc:responses.dc),
-                            background:{ _,_ in throw Boundary.dependency("Network menu background") },
+                            branding:branding,background:{ _,_ in throw Boundary.dependency("Network menu background") },
                             draw:{ args,_ in try draw(args) },fill:{ a in
                                 guard a.count == 6 else { throw Boundary.dependency("Network menu fill") }
                                 var e = OriginalFrontScreenEvent("fill")

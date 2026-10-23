@@ -12,12 +12,14 @@ public enum OriginalWindowLifecycle {
     /// `deliver` receives the messages DestroyWindow sends synchronously to
     /// 43b3d0 during an Alt+Enter recreation (WM_DESTROY, then WM_NCDESTROY),
     /// on the enclosing state; the default delivers nothing, as the earlier
-    /// whole-return model did (APPLICATION_FULL_SCREEN_PLAN.md).
+    /// whole-return model did (APPLICATION_FULL_SCREEN_PLAN.md). `branding`: the
+    /// game's window class and title for the recreation (ENGINE_SPLIT E10).
     public static func receive(_ input: OriginalWindowInput.Message,
         globals: inout OriginalStateRecord, memory: inout OriginalMenuPresentationMemory,
         backing: (String, Int) throws -> [UInt8], perform: (Request) throws -> Response,
         store: OriginalWindowInput.Store = { _,_ in },
-        deliver: (OriginalWindowInput.Message, inout OriginalStateRecord, inout OriginalMenuPresentationMemory) throws -> Int32 = { _,_,_ in 0 }) throws -> Int32 {
+        deliver: (OriginalWindowInput.Message, inout OriginalStateRecord, inout OriginalMenuPresentationMemory) throws -> Int32 = { _,_,_ in 0 },
+        branding: OriginalGameRules.Branding = .lf2) throws -> Int32 {
         guard globals.byteCount == OriginalMatchPreparation.globalSize else { throw error("Globals extent") }
         var state = globals, owned = memory
         func word(_ address: Int) throws -> UInt32 { try state.integer(at: address-base,as: UInt32.self) }
@@ -85,7 +87,8 @@ public enum OriginalWindowLifecycle {
                         _ = try deliver(.init(window: window,message: 2,wParam: 0,lParam: 0),&state,&owned)
                         _ = try deliver(.init(window: window,message: 0x82,wParam: 0,lParam: 0),&state,&owned)
                     }
-                    _ = try OriginalWindowInitialization.configure(globals: &state,backing: backing,perform: perform,store: store)
+                    _ = try OriginalWindowInitialization.configure(globals: &state,backing: backing,perform: perform,store: store,
+                                                                   branding: branding)
                     //43bdd0 returns0/1, so its signed-negative debug branch
                     //cannot run. Even0 still reaches ShowWindow and flag clear.
                     _ = try numeric("showWindow",[word(0x4546f4),5])

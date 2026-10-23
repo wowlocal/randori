@@ -73,21 +73,23 @@ extension OriginalMatchPreparation {
     /// Main-menu body with the same shared storage runner used by early startup.
     public mutating func runMainMenu(crt: inout OriginalCRTRandom, input: OriginalMainMenuInput,
                                     observe: (OriginalMainMenuEvent) throws -> Void = { _ in }) throws -> OriginalMainMenuExit {
-        try OriginalMainMenu.run(world: &world,globals: &globals,crt: &crt,input: input,observe: observe)
+        let branding = catalog.rules.branding
+        return try OriginalMainMenu.run(world: &world,globals: &globals,crt: &crt,input: input,branding: branding,observe: observe)
     }
 }
 
 ///427915..427ca7 needs World/globals and CRT state; it does not depend on a
 ///loaded match catalog. The existing preparation API delegates to this runner.
 public enum OriginalMainMenu {
+    /// `branding`: the game's OFFICIAL WEBSITE link (ENGINE_SPLIT E10).
     public static func run(world: inout OriginalStateRecord,globals: inout OriginalStateRecord,
-        crt: inout OriginalCRTRandom,input: OriginalMainMenuInput,
+        crt: inout OriginalCRTRandom,input: OriginalMainMenuInput,branding: OriginalGameRules.Branding = .lf2,
         network: OriginalMenuNetworkProvider? = nil,
         store: @escaping OriginalWindowInput.Store = { _,_ in },
         worldStored: @escaping (Int,UInt32) throws -> Void = { _,_ in },
         observe: (OriginalMainMenuEvent) throws -> Void = { _ in }) throws -> OriginalMainMenuExit {
         guard world.byteCount == OriginalStateRecord.worldPrefixSize,globals.byteCount == OriginalMatchPreparation.globalSize else { throw OriginalStateError.invalidStorage("Main menu storage sizes") }
-        var execution = Execution(world: world,globals: globals,store:store,worldStored:worldStored,live:network),random = crt
+        var execution = Execution(world: world,globals: globals,store:store,worldStored:worldStored,live:network,branding:branding),random = crt
         let result = try execution.consumeMainMenu(crt: &random,input: input,observe: observe)
         world = execution.world;globals = execution.globals;crt = random;return result
     }
@@ -97,6 +99,7 @@ public enum OriginalMainMenu {
         let worldStored: (Int,UInt32) throws -> Void
         /// Live Winsock answers; nil answers from the supplied input.
         let live: OriginalMenuNetworkProvider?
+        let branding: OriginalGameRules.Branding
         /// gethostbyname's list, as answered.
         var hostAddresses: [OriginalMenuNetworkInput.Address] = []
         static let globalBase = OriginalMatchPreparation.globalBase
@@ -211,7 +214,7 @@ public enum OriginalMainMenu {
             case 4: try setGlobal(0x44d064, 7)
             case 5:
                 try event(.sleep, [300])
-                try event(.shell, [0, 0, 0, 1], [Array("open".utf8), Array("http://littlefighter.com".utf8)])
+                try event(.shell, [0, 0, 0, 1], [Array("open".utf8), branding.website])
             default: break
             }
         }

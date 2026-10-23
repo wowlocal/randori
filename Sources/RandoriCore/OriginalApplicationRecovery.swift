@@ -5,10 +5,12 @@
 public enum OriginalApplicationRecovery {
     public typealias Request = OriginalWindowInitialization.Request
     public typealias Response = OriginalWindowInitialization.Response
+    /// `branding`: the game's window class and title for the recreation (ENGINE_SPLIT E10).
     public static func recover<Context>(globals: inout OriginalStateRecord, context: inout Context,
         backing: (String,Int) throws -> [UInt8], perform: (Request,inout Context) throws -> Response,
         store: OriginalWindowInput.Store = { _,_ in },
-        beforeCommit: (OriginalStateRecord,Context,Int32) throws -> Void = { _,_,_ in }) throws -> Int32 {
+        beforeCommit: (OriginalStateRecord,Context,Int32) throws -> Void = { _,_,_ in },
+        branding: OriginalGameRules.Branding = .lf2) throws -> Int32 {
         guard globals.byteCount == OriginalMatchPreparation.globalSize else {
             throw OriginalStateError.invalidStorage("Application recovery globals extent")
         }
@@ -31,7 +33,7 @@ public enum OriginalApplicationRecovery {
         else {
             try put(0x458434,1)
             try OriginalDisplayDestruction.destroy(globals: &state,perform: call,store: store)
-            _ = try OriginalWindowInitialization.configure(globals: &state,backing: backing,perform: call,store: store)
+            _ = try OriginalWindowInitialization.configure(globals: &state,backing: backing,perform: call,store: store,branding: branding)
             // Actual43bdd0 returns only0/1, so43e8b1's negative debug branch is
             // unreachable here. Its0 still reaches ShowWindow, even with HWND0.
             result = try call(.init("showWindow",[word(0x4546f4),5])).result

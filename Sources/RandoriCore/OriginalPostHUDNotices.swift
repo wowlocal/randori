@@ -14,9 +14,13 @@ public enum OriginalPostHUDNotices {
         performBlit: (OriginalBitmapBlit) throws -> Int32,
         textRenderer: OriginalSurfaceText.Renderer? = nil,
         observe: (OriginalFrontScreenEvent) throws -> Void = { _ in }) throws {
-        try draw(world: state.world, actors: state.actors, globals: state.globals, local: &local,
+        var candidate: OriginalStateRecord? = local
+        // The rules' branding is read only where the notice draws the credit line.
+        try advance(world: state.world, actors: state.actors, globals: state.globals, local: &candidate,
             dcResult: dcResult, dc: dc, fillBacking: fillBacking, resourceBitmap: resourceBitmap,
-            performFill: performFill, performBlit: performBlit, textRenderer: textRenderer, observe: observe)
+            performFill: performFill, performBlit: performBlit, textRenderer: textRenderer, observe: observe,
+            branding: state.catalog.rules.branding)
+        guard let candidate else { throw error("Lost caller storage") }; local = candidate
     }
 
     /// A retained caller may not yet own this stack backing. Keep nil while
@@ -31,7 +35,8 @@ public enum OriginalPostHUDNotices {
         observe: (OriginalFrontScreenEvent) throws -> Void = { _ in }) throws {
         try advance(world: state.world, actors: state.actors, globals: state.globals, local: &local,
             dcResult: dcResult, dc: dc, fillBacking: fillBacking, resourceBitmap: resourceBitmap,
-            performFill: performFill, performBlit: performBlit, textRenderer: textRenderer, observe: observe)
+            performFill: performFill, performBlit: performBlit, textRenderer: textRenderer, observe: observe,
+            branding: state.catalog.rules.branding)
     }
 
     static func draw(world: OriginalStateRecord, actors: [OriginalStateRecord], globals: OriginalStateRecord,
@@ -41,11 +46,13 @@ public enum OriginalPostHUDNotices {
         performBlit: (OriginalBitmapBlit) throws -> Int32,
         textRenderer: OriginalSurfaceText.Renderer? = nil,
         observe: (OriginalFrontScreenEvent) throws -> Void = { _ in },
-        observeFormatStorage: (OriginalStateRecord) throws -> Void = { _ in }) throws {
+        observeFormatStorage: (OriginalStateRecord) throws -> Void = { _ in },
+        branding: OriginalGameRules.Branding = .lf2) throws {
         var candidate: OriginalStateRecord? = local
         try advance(world: world, actors: actors, globals: globals, local: &candidate,
             dcResult: dcResult, dc: dc, fillBacking: fillBacking, resourceBitmap: resourceBitmap,
-            performFill: performFill, performBlit: performBlit, textRenderer: textRenderer, observe: observe, observeFormatStorage: observeFormatStorage)
+            performFill: performFill, performBlit: performBlit, textRenderer: textRenderer, observe: observe, observeFormatStorage: observeFormatStorage,
+            branding: branding)
         guard let candidate else { throw error("Lost caller storage") }; local = candidate
     }
 
@@ -56,7 +63,8 @@ public enum OriginalPostHUDNotices {
         performBlit: (OriginalBitmapBlit) throws -> Int32,
         textRenderer: OriginalSurfaceText.Renderer? = nil,
         observe: (OriginalFrontScreenEvent) throws -> Void = { _ in },
-        observeFormatStorage: (OriginalStateRecord) throws -> Void = { _ in }) throws {
+        observeFormatStorage: (OriginalStateRecord) throws -> Void = { _ in },
+        branding: @autoclosure () -> OriginalGameRules.Branding) throws {
         guard (local == nil || local?.byteCount == localSize), globals.byteCount == OriginalMatchPreparation.globalSize else {
             throw error("Caller storage extent")
         }
@@ -105,7 +113,8 @@ public enum OriginalPostHUDNotices {
         }
         if try g(0x450c2c) == 1 {
             try text(Array("Press F4 or 'Attack' to exit".utf8), x: 610, y: 110, color: 0x7d7d7d)
-            let literal = OriginalFrontScreenBody.literals[2].bytes
+            // The game's third credit line, encoded (ENGINE_SPLIT E10).
+            let literal = branding().encodedCredits[2]
             guard literal.count == 29 else { throw error("URL literal extent") }
             try store(literal, at: 0)
             // Both source strlen loops are live; preserve termination after

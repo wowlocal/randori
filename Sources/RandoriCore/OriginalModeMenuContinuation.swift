@@ -6,9 +6,11 @@ public enum OriginalModeMenuContinuationError: Error, Equatable {
 ///422ab8 return. The earlier tick body and outer424746 caller are separate.
 /// Keep every state owner and caller event buffer staged across all children.
 public enum OriginalModeMenuContinuation {
-    /// `menuNames`: the game's menu bitmaps (ENGINE_SPLIT E5f-2b: `Interface.menuBitmaps`).
+    /// `menuNames`: the game's menu bitmaps (ENGINE_SPLIT E5f-2b: `Interface.menuBitmaps`);
+    /// `branding`: the mode screen's credit lines and links (E10).
     public static func advance<Environment>(world: inout OriginalStateRecord,actors: [OriginalStateRecord],
-        globals: inout OriginalStateRecord,menuNames: [String],memory: inout OriginalMenuPresentationMemory,
+        globals: inout OriginalStateRecord,menuNames: [String],branding: OriginalGameRules.Branding = .lf2,
+        memory: inout OriginalMenuPresentationMemory,
         music: inout OriginalMusicMemory,resources: inout OriginalMenuResourceLoading,
         local: inout OriginalStateRecord,libraryText: inout OriginalLibSurfaceText,
         environment: inout Environment,worldAddress: UInt32,target: UInt32,
@@ -37,7 +39,7 @@ public enum OriginalModeMenuContinuation {
             local:&scratch,libraryText:&text,worldAddress:worldAddress,target:target,input:screenInput,
             fillBacking:[UInt8](repeating:0,count:100),background:{ try background(&$0,&$1,&candidate) },
             update:{ try update(&$0,&candidate) },milliseconds:{ milliseconds },
-            draw:{ try draw($0,$1,$2,&candidate) },observe:{ try observe($0,&candidate) })
+            draw:{ try draw($0,$1,$2,&candidate) },observe:{ try observe($0,&candidate) },branding:branding)
         try afterScreen(end,state,owned,scratch,text,&candidate)
         if end == .returned {
             try OriginalMenuReturn.advanceWithLibrary(world:&scene,globals:&state,memory:&owned,libraryText:&text,

@@ -41,7 +41,7 @@ final class SyntheticLibraryTests: XCTestCase {
                     interaction: base.interaction, impact: base.impact, items: base.items, roster: base.roster, modes: base.modes,
                     physics: base.physics, drawing: base.drawing, effects: base.effects, lifecycle: base.lifecycle,
                     fusion: base.fusion, weaponBreak: base.weaponBreak, interface: base.interface, characterAI: base.characterAI,
-                    characterAISpecial: base.characterAISpecial)
+                    characterAISpecial: base.characterAISpecial, branding: base.branding)
                 XCTAssertNil(off.library)
                 let platform = OriginalMacRuntimeStartup.Platform(inputs: inputs, prepared: try OriginalMacRuntimeStartup.prepared(inputs))
                 let driver = try OriginalMacRuntimeStartup.Driver(platform: platform, instance: 0x400000, show: 10,

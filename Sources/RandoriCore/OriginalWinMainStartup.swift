@@ -80,8 +80,9 @@ public struct OriginalWinMainStartup {
     /// platform structure bytes retain false masks; only owned fields compare.
     /// `interface`: the game's interface data; its menu WAVs (ENGINE_SPLIT E5f-3) and
     /// panel atlas (E5f-4) are checked with the globals' extent, before any request
-    /// or store.
+    /// or store. `branding`: the game's window class and title (E10).
     public mutating func run(instance: UInt32,show: Int32,globals: inout OriginalStateRecord,interface: OriginalGameRules.Interface,
+        branding: OriginalGameRules.Branding = .lf2,
         platform p: any OriginalWinMainStartupPlatform,
         store: OriginalWindowInput.Store = { _,_ in },
         after: (OriginalWinMainStartup,OriginalStateRecord) throws -> Void = { _,_ in }) throws {
@@ -108,7 +109,7 @@ public struct OriginalWinMainStartup {
                 if request.kind == "registerClass",let defined = request.defined,
                    !defined[24..<28].allSatisfy({ $0 }) { throw Boundary.unknownFullscreenCursor }
                 return try p.window(request)
-            },store:store)
+            },store:store,branding:branding)
         try p.observe(.stage("window-return",state))
         try p.observe(.stage("panel-entry",state))
         let io = p.panelIO

@@ -20,14 +20,18 @@ public enum OriginalFrontControlSettings {
         public let target: UInt32, dcResult: Int32, dc: UInt32
         public init(target: UInt32,dcResult: Int32,dc: UInt32) { self.target = target;self.dcResult = dcResult;self.dc = dc }
     }
-    public static let help = Array("http://www.littlefighter.com/control_index.html".utf8)
+    /// LF2 2.0a's help link; the screen opens the game's (`branding.controlHelp`, E10).
+    @available(*, deprecated, message: "Use OriginalGameRules.Branding.controlHelp")
+    public static var help: [UInt8] { OriginalGameRules.Branding.lf2.controlHelp }
     private static func error(_ text: String) -> OriginalStateError { .invalidStorage("Control settings: "+text) }
 
+    /// `branding`: the game's help link, `controlHelp` (ENGINE_SPLIT E10).
     public static func advance(globals: inout OriginalStateRecord,memory: inout OriginalMenuPresentationMemory,input: Input,
         draw: ([UInt32]) throws -> Void,keyState: (UInt32) throws -> Int32,
         reload: (inout OriginalStateRecord) throws -> Void,
         write: (inout OriginalStateRecord) throws -> OriginalSettingsWriting.Result,
-        observe: (OriginalFrontScreenEvent) throws -> Void) throws {
+        observe: (OriginalFrontScreenEvent) throws -> Void,
+        branding: OriginalGameRules.Branding = .lf2) throws {
         let base = OriginalMatchPreparation.globalBase
         guard globals.byteCount == OriginalMatchPreparation.globalSize else { throw error("Globals extent") }
         var state = globals,owned = memory
@@ -73,7 +77,7 @@ public enum OriginalFrontControlSettings {
             try bitmap(0x451168,0x2e,0x1db,2,1)
             if try clicked() {
                 try sound(0x455610);try observe(.init("sleep",[300]))
-                try observe(.init("shell",[0,0,0,1],[Array("open".utf8),help]))
+                try observe(.init("shell",[0,0,0,1],[Array("open".utf8),branding.controlHelp]))
             }
         } else { try bitmap(0x451168,0x2e,0x1db,1,1) }
         // The cell waiting for a key: the first pressed keyboard VK, or the

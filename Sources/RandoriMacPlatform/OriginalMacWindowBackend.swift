@@ -196,8 +196,9 @@ extension OriginalRuntimeWindowBackend {
         public let token: UInt32, title: String, frame: CGRect, client: CGRect
         public let backingScale: CGFloat, visible: Bool, closed: Bool, windowNumber: Int
     }
-    public convenience init(instance: UInt32,identities: OriginalMacResourceIdentityPool? = nil) {
-        self.init(instance:instance,identities:identities,host:OriginalMacWindowHost())
+    public convenience init(instance: UInt32,identities: OriginalMacResourceIdentityPool? = nil,
+                            branding: OriginalGameRules.Branding = .lf2) {
+        self.init(instance:instance,identities:identities,host:OriginalMacWindowHost(),branding:branding)
     }
     private func nsWindow(_ owner: WindowLease) -> NSWindow { OriginalMacWindowHost.window(owner.window) }
     public func observation(_ token: UInt32) throws -> Observation {

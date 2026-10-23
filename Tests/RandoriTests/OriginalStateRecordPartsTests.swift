@@ -184,7 +184,7 @@ final class OriginalStateRecordPartsTests: XCTestCase {
         let full = try OriginalStateRecord(bytes: bytes, defined: defined)
         let pointers = try OriginalStateRecord(bytes: Array(bytes[0xb8a8..<0xb8b0]), defined: Array(defined[0xb8a8..<0xb8b0]))
         var state = try State(full: full, memory: .init(replayPointers: pointers), front: .init(interface: OriginalGameRules.engineTests.interface), frontSurfaces: [:],
-                              earlyScreen: .init(), libraryText: .init(), random: .init(), screenBody: nil)
+                              earlyScreen: .init(), libraryText: .init(), random: .init(), screenBody: nil, branding: .lf2)
         XCTAssertTrue(state.full.isPartitioned); XCTAssertEqual(state.full, full)
         var twin = state.flatFullForTesting()
         XCTAssertFalse(twin.full.isPartitioned)
@@ -238,7 +238,7 @@ final class OriginalStateRecordPartsTests: XCTestCase {
         let mask = [Bool](repeating: true, count: 0xc3a8), full = try OriginalStateRecord(bytes: bytes, defined: mask)
         let pointers = try OriginalStateRecord(bytes: Array(bytes[0xb8a8..<0xb8b0]), defined: Array(mask[0xb8a8..<0xb8b0]))
         let state = try Session.State(full: full, memory: .init(replayPointers: pointers), front: .init(interface: OriginalGameRules.engineTests.interface), frontSurfaces: [:],
-                                      earlyScreen: .init(), libraryText: .init(), random: .init(), screenBody: nil)
+                                      earlyScreen: .init(), libraryText: .init(), random: .init(), screenBody: nil, branding: .lf2)
         XCTAssertTrue(state.full.isPartitioned)
         let replies = Session.Responses(draw: 0, presentation: 0, sound: 0, release: 0, dcResult: 0, dc: 9)
         var message = try OriginalStateRecord(bytes: [UInt8](repeating: 0, count: 28), defined: [Bool](repeating: true, count: 28))

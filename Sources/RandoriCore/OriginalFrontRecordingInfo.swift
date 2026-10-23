@@ -15,16 +15,22 @@ import Foundation
 /// ShellExecuteA are events.
 public enum OriginalFrontRecordingInfo {
     public typealias Input = OriginalFrontControlSettings.Input
-    public static let help = Array("http://www.littlefighter.com/record".utf8)
-    public static let challenge = Array("http://www.littlefighter.com/challenge".utf8)
+    /// LF2 2.0a's links; the screens open the game's (`branding.recordingHelp`
+    /// and `branding.challenge`, E10).
+    @available(*, deprecated, message: "Use OriginalGameRules.Branding.recordingHelp")
+    public static var help: [UInt8] { OriginalGameRules.Branding.lf2.recordingHelp }
+    @available(*, deprecated, message: "Use OriginalGameRules.Branding.challenge")
+    public static var challenge: [UInt8] { OriginalGameRules.Branding.lf2.challenge }
     public static let folder = Array("recording".utf8)
     private static func error(_ text: String) -> OriginalStateError { .invalidStorage("Recording info: "+text) }
 
+    /// `branding`: the game's links, `recordingHelp` and `challenge` (ENGINE_SPLIT E10).
     public static func advance(selector: Int32,globals: inout OriginalStateRecord,memory: inout OriginalMenuPresentationMemory,input: Input,
         draw: ([UInt32]) throws -> Void,blit: (OriginalBitmapBlit) throws -> Int32,keyState: (UInt32) throws -> Int32,
         reload: (inout OriginalStateRecord) throws -> Void,
         write: (inout OriginalStateRecord) throws -> OriginalSettingsWriting.Result,
-        observe: (OriginalFrontScreenEvent) throws -> Void) throws {
+        observe: (OriginalFrontScreenEvent) throws -> Void,
+        branding: OriginalGameRules.Branding = .lf2) throws {
         let base = OriginalMatchPreparation.globalBase
         guard globals.byteCount == OriginalMatchPreparation.globalSize,selector == 7 || selector == 8 else { throw error("Globals extent or selector") }
         var state = globals,owned = memory
@@ -79,7 +85,7 @@ public enum OriginalFrontRecordingInfo {
             try bitmap(0x4511a0,0x9b,0x4b,1);try bitmap(0x4511a4,0x2c,0xa7,3)
             if try inside(0x60,0x15c,0x27f,0x174) {
                 try bitmap(0x4511a4,0x60,0x15c,4)
-                if try clicked() { try link("open",challenge) }
+                if try clicked() { try link("open",branding.challenge) }
             }
             if try inside(0x13e,0x17e,0x1d8,0x196) {
                 try bitmap(0x4511a0,0x13e,0x17e,13)
@@ -132,7 +138,7 @@ public enum OriginalFrontRecordingInfo {
         }
         if try inside(0x2c,0x1cd,0x1e3,0x1e4) {
             try bitmap(0x4511a4,0x2c,0x1cd,2)
-            if try clicked() { try link("open",help) }
+            if try clicked() { try link("open",branding.recordingHelp) }
         } else { try bitmap(0x4511a4,0x2c,0x1cd,1) }
         // Cancel: reload, sound, back to the main menu. OK: write, sound, page 8.
         if try inside(0x193,0x1a0,0x22e,0x1b8) {

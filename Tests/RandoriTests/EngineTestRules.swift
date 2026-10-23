@@ -42,7 +42,9 @@ extension OriginalGameRules {
                            pickupItems: OriginalIDRange(0..<0), pickupExtra: -1, soughtDrink: -1, avoidedDrink: -1, idleDefenders: [],
                            drinks: OriginalIDSet([]), rangedBand: OriginalIDSet([]), rangedJoiner: -1, meleeWeapons: OriginalIDSet([]),
                            rollingWeapon: -1, thrownWeapons: OriginalIDSet([]), dashCounters: OriginalIDSet([]), dashJumper: -1, shortDasher: -1),
-        characterAISpecial: NoSpecialMoves())
+        characterAISpecial: NoSpecialMoves(),
+        // ENGINE_SPLIT E10: LF2 2.0a's strings, as every engine test before it.
+        branding: .lf2)
 }
 
 /// The engine tests' special moves: none (the synthetic computer match runs the

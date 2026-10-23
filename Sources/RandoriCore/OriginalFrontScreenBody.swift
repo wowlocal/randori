@@ -22,19 +22,23 @@ public enum OriginalFrontScreenBody {
     /// The own caller retains GameEntry's target at +20. All strings and the
     /// vertical coordinate are produced by this body; other private caller bytes
     /// remain unknown. The library DC and globals commit only after completion.
+    /// `branding`: the game's credit lines and links (ENGINE_SPLIT E10).
     public static func advanceOwnStartup(globals: inout OriginalStateRecord,target: UInt32,
         libraryText: inout OriginalLibSurfaceText,input: OriginalFrontScreenBodyInput,
         draw: ([UInt32]) throws -> Void,
         textPerform: ((OriginalMenuPresentationEvent) throws -> OriginalLibSurfaceText.Response)? = nil,
         textDidRespond: (OriginalMenuPresentationEvent, OriginalLibSurfaceText.Response) throws -> Void = { _,_ in },
-        observe: (OriginalFrontScreenEvent) throws -> Void = { _ in }) throws -> StartupResult {
+        observe: (OriginalFrontScreenEvent) throws -> Void = { _ in },
+        branding: OriginalGameRules.Branding = .lf2) throws -> StartupResult {
         var local = try OriginalStateRecord(bytes:[UInt8](repeating:0,count:0xc0),defined:[Bool](repeating:false,count:0xc0))
         try local.write(target,at:0x20)
-        let end = try advanceWithLibrary(globals:&globals,local:&local,libraryText:&libraryText,input:input,draw:draw,textPerform:textPerform,textDidRespond:textDidRespond,observe:observe)
+        let end = try advanceWithLibrary(globals:&globals,local:&local,libraryText:&libraryText,input:input,draw:draw,textPerform:textPerform,textDidRespond:textDidRespond,observe:observe,branding:branding)
         let selector: Int32? = end == .alternateDispatch ? try globals.integer(at:0x44d064-OriginalMatchPreparation.globalBase,as:Int32.self) : nil
         return .init(continuation:end,local:local,retainedSelector:selector)
     }
     private struct Stop: Error { let end: Continuation }
+    /// LF2 2.0a's credit literals and links in the EXE (the verb is the body's
+    /// own); a game's are its branding's `encodedCredits` and `creditLinks`.
     public static let literals: [(address: UInt32, bytes: [UInt8])] = [
         (0x4498d8,Array("bz\"Pasvl Xqqg-\"Vtbtvkz\"Zooi\0".utf8)),
         (0x4498b8,Array("1:;<-3238-\"dlm\"uihjws!thsftyee\0".utf8)),
@@ -48,9 +52,10 @@ public enum OriginalFrontScreenBody {
     ]
     public static func advance(globals: inout OriginalStateRecord, local: inout OriginalStateRecord,
         input: OriginalFrontScreenBodyInput, draw: ([UInt32]) throws -> Void,
-        observe: (OriginalFrontScreenEvent) throws -> Void = { _ in }) throws -> Continuation {
+        observe: (OriginalFrontScreenEvent) throws -> Void = { _ in },
+        branding: OriginalGameRules.Branding = .lf2) throws -> Continuation {
         var libraryText: OriginalLibSurfaceText? = nil
-        return try execute(globals: &globals,local: &local,libraryText: &libraryText,input: input,draw: draw,observe: observe)
+        return try execute(globals: &globals,local: &local,libraryText: &libraryText,input: input,draw: draw,observe: observe,branding: branding)
     }
     /// The installed library owns the retained DC across all text passes. The
     /// complete body commits its own globals, local bytes and DC together.
@@ -59,9 +64,10 @@ public enum OriginalFrontScreenBody {
         draw: ([UInt32]) throws -> Void,
         textPerform: ((OriginalMenuPresentationEvent) throws -> OriginalLibSurfaceText.Response)? = nil,
         textDidRespond: (OriginalMenuPresentationEvent, OriginalLibSurfaceText.Response) throws -> Void = { _,_ in },
-        observe: (OriginalFrontScreenEvent) throws -> Void = { _ in }) throws -> Continuation {
+        observe: (OriginalFrontScreenEvent) throws -> Void = { _ in },
+        branding: OriginalGameRules.Branding = .lf2) throws -> Continuation {
         var text: OriginalLibSurfaceText? = libraryText
-        let end = try execute(globals: &globals,local: &local,libraryText: &text,input: input,draw: draw,textPerform: textPerform,textDidRespond: textDidRespond,observe: observe)
+        let end = try execute(globals: &globals,local: &local,libraryText: &text,input: input,draw: draw,textPerform: textPerform,textDidRespond: textDidRespond,observe: observe,branding: branding)
         libraryText = text!;return end
     }
     private static func execute(globals: inout OriginalStateRecord,local: inout OriginalStateRecord,
@@ -69,7 +75,7 @@ public enum OriginalFrontScreenBody {
         draw: ([UInt32]) throws -> Void,
         textPerform: ((OriginalMenuPresentationEvent) throws -> OriginalLibSurfaceText.Response)? = nil,
         textDidRespond: (OriginalMenuPresentationEvent, OriginalLibSurfaceText.Response) throws -> Void = { _,_ in },
-        observe: (OriginalFrontScreenEvent) throws -> Void) throws -> Continuation {
+        observe: (OriginalFrontScreenEvent) throws -> Void,branding: OriginalGameRules.Branding) throws -> Continuation {
         guard globals.byteCount == OriginalMatchPreparation.globalSize,local.byteCount == 0xc0 else { throw OriginalStateError.invalidStorage("Front screen body extent") }
         var state = globals, scratch = local,ownText = libraryText
         let base = OriginalMatchPreparation.globalBase
@@ -84,7 +90,7 @@ public enum OriginalFrontScreenBody {
             try emit("writeLocal",[UInt32(offset),UInt32(bytes.count),value])
         }
         func copyLiteral(_ index: Int,_ offset: Int) throws {
-            let bytes = literals[index].bytes
+            let bytes = branding.encodedCredits[index]
             for i in stride(from: 0,to: 28,by: 4) { try localWrite(offset+i,Array(bytes[i..<i+4])) }
             if bytes.count == 31 { try localWrite(offset+28,Array(bytes[28..<30]));try localWrite(offset+30,[bytes[30]]) }
             else if bytes.count == 29 { try localWrite(offset+28,[bytes[28]]) }
@@ -133,7 +139,7 @@ public enum OriginalFrontScreenBody {
         func link(_ index: Int) throws {
             if try clicked() {
                 try store(0x457580,0);try sound();try emit("sleep",[300])
-                try emit("shell",[0,0,0,1],[links[3].bytes,links[index].bytes])
+                try emit("shell",[0,0,0,1],[links[3].bytes,branding.creditLinks[index]])
             }
         }
         func highlight(_ offset: Int,_ terminator: Int,_ x: Int32,_ y: Int32) throws {

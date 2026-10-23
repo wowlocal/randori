@@ -39,8 +39,9 @@ public struct OriginalCatalogRegistry: Equatable, Sendable {
     /// Records preserve supplied bytes/masks. Only established pointers are bound
     /// to non-null ordinals: object entries -> object request index; built-in bitmap
     /// pointers -> bitmap request index. Ordinal zero is a valid bound reference.
+    /// `branding`: background 99's name, `builtInBackgroundName` (ENGINE_SPLIT E10).
     public init(source: [UInt8], fileName: [UInt8], initialChecksum: UInt32,
-                backing: [Int: OriginalStateRecord],
+                backing: [Int: OriginalStateRecord], branding: OriginalGameRules.Branding = .lf2,
                 beforeRead: () throws -> Void = {},
                 onRead: ((Int) throws -> Void)? = nil,
                 onChecksum: (UInt32) throws -> Void = { _ in },
@@ -49,7 +50,7 @@ public struct OriginalCatalogRegistry: Equatable, Sendable {
                 onStore: (Store) throws -> Void = { _ in },
                 onLoad: (OriginalCatalogLoadRequest, UInt32) throws -> UInt32 = { _, checksum in checksum }) throws {
         try self.init(source: { source }, fileName: fileName, initialChecksum: initialChecksum,
-                      backing: backing, beforeRead: beforeRead, onRead: onRead,
+                      backing: backing, branding: branding, beforeRead: beforeRead, onRead: onRead,
                       onChecksum: onChecksum, onClose: onClose, onRequest: onRequest, onStore: onStore, onLoad: onLoad)
     }
 
@@ -57,7 +58,7 @@ public struct OriginalCatalogRegistry: Equatable, Sendable {
     /// opening its catalog file. A throwing provider preserves that call order;
     /// callers stage external resource effects until the enclosing load commits.
     public init(source: () throws -> [UInt8], fileName: [UInt8], initialChecksum: UInt32,
-                backing: [Int: OriginalStateRecord],
+                backing: [Int: OriginalStateRecord], branding: OriginalGameRules.Branding = .lf2,
                 beforeRead: () throws -> Void = {},
                 onRead: ((Int) throws -> Void)? = nil,
                 onChecksum: (UInt32) throws -> Void = { _ in },
@@ -92,7 +93,7 @@ public struct OriginalCatalogRegistry: Equatable, Sendable {
         for (offset, value) in [(0, 2400), (4, 350), (8, 470), (0x14, 37), (0x18, 9)] {
             try write(Int32(value), region: builtIn, at: offset)
         }
-        try writeString(Array("Lee On Road".utf8), region: builtIn, at: 0x3cc)
+        try writeString(branding.builtInBackgroundName, region: builtIn, at: 0x3cc)
         for (index, item) in [("shadow1", 0x3a4, 0x98c), ("back99_1", 0x20, 0x914),
                               ("back99_2", 0x3e, 0x918), ("back99_3", 0x5c, 0x91c)].enumerated() {
             try writeString(Array(item.0.utf8), region: builtIn, at: item.1)

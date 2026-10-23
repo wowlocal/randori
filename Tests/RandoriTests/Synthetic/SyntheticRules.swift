@@ -51,6 +51,8 @@ extension OriginalGameRules {
             interface: SyntheticNames.interface, characterAI: base.characterAI, characterAISpecial: base.characterAISpecial,
             // The application's sessions are modelled only with the library (E6d);
             // invented loading labels (E6d-2).
-            library: syntheticLibrary)
+            library: syntheticLibrary,
+            // E10: LF2 2.0a's strings (the pack's pinned frames draw its credits).
+            branding: .lf2)
     }()
 }

@@ -56,9 +56,11 @@ public enum OriginalWindowInput {
     }
     /// Both storage records and allocation ownership commit together. Observers
     /// may fail late; callers buffer external effects until this returns.
+    /// `branding`: the game's quit caption (ENGINE_SPLIT E10).
     public static func receive(_ input: Message, globals: inout OriginalStateRecord,
         local: inout OriginalStateRecord, memory: inout OriginalMenuPresentationMemory,
-        request: (Request) throws -> Int32, store: Store = { _,_ in }) throws -> Int32 {
+        request: (Request) throws -> Int32, store: Store = { _,_ in },
+        branding: OriginalGameRules.Branding = .lf2) throws -> Int32 {
         guard globals.byteCount == OriginalMatchPreparation.globalSize,
               local.byteCount == localCount else { throw error("Global/local extents") }
         var state = globals, retained = local, owned = memory
@@ -148,7 +150,7 @@ public enum OriginalWindowInput {
                 if input.wParam == 0x90 { returned = 0 }
                 else if input.wParam == 27 {
                     let answer = try request(.init(.message,[input.window,4],
-                        [Array("Are you sure to quit?".utf8),Array("LF2".utf8)]))
+                        [Array("Are you sure to quit?".utf8),branding.shortName]))
                     if answer == 6 {
                         try release()
                         _ = try request(.init(.postMessage,[input.window,0x10,0,0]))

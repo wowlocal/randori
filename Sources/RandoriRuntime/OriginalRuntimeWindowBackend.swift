@@ -143,6 +143,8 @@ public struct OriginalPresentDelivery: @unchecked Sendable {
     }
     public let host: any OriginalRuntimeWindowHost
     private let identity = Identity(), instance: UInt32
+    /// The game's window class and title the createWindow request must carry (ENGINE_SPLIT E10).
+    private let branding: OriginalGameRules.Branding
     public let identities: OriginalMacResourceIdentityPool
     private var cursor: CursorLease?, windowClass: ClassLease?
     private var windows: [UInt32:WeakWindow] = [:]
@@ -151,8 +153,10 @@ public struct OriginalPresentDelivery: @unchecked Sendable {
     /// Called with a window created after the first one (Alt+Enter), so its
     /// owner can move input and close handling to it.
     public var created: ((UInt32) -> Void)?
-    public init(instance: UInt32,identities: OriginalMacResourceIdentityPool? = nil,host: any OriginalRuntimeWindowHost) {
+    public init(instance: UInt32,identities: OriginalMacResourceIdentityPool? = nil,host: any OriginalRuntimeWindowHost,
+                branding: OriginalGameRules.Branding = .lf2) {
         self.instance = instance; self.identities = identities ?? OriginalMacResourceIdentityPool(); self.host = host
+        self.branding = branding
     }
 
     public nonisolated static func handles(_ request: Window.Request) -> Bool {
@@ -257,7 +261,7 @@ public struct OriginalPresentDelivery: @unchecked Sendable {
             if popup { try require(w[6] == UInt32(try metric(0)) && w[7] == UInt32(try metric(1))) }
             try require(w[1] == 0x447634 && w[2] == 0x447620 && w[8] == 0 && w[9] == 0 && w[10] == instance && w[11] == 0)
             try require(popup || (w[0] == 0 && w[3] == 0x10cb0000 && w[4] == 0x80000000 && w[5] == 5))
-            try require(q.strings[0] == Array("Marti".utf8) && q.strings[1] == Array("Little Fighter 2".utf8))
+            try require(q.strings[0] == branding.windowClass && q.strings[1] == branding.windowTitle)
             guard w[6] > 0,w[7] > 0,w[6] <= UInt32(Int32.max),w[7] <= UInt32(Int32.max) else { throw Boundary.geometry }
             guard windowClass != nil else { throw Boundary.arguments("unregistered class") }
         case "updateWindow","destroyWindow":

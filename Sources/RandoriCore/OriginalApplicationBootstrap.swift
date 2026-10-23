@@ -153,7 +153,7 @@ public struct OriginalApplicationBootstrap {
             try prepare(staged)
             var owner = OriginalWinMainStartup()
             var globals = try Session.State.slice(initial,0,OriginalMatchPreparation.globalSize)
-            try owner.run(instance:instance,show:show,globals:&globals,interface:rules.interface,platform:bridge,
+            try owner.run(instance:instance,show:show,globals:&globals,interface:rules.interface,branding:rules.branding,platform:bridge,
                           store:{ try store(staged,$0,$1) })
             var bytes = initial.bytes,mask = initial.defined
             bytes.replaceSubrange(0..<globals.byteCount,with:globals.bytes)
@@ -161,7 +161,7 @@ public struct OriginalApplicationBootstrap {
             let full = try OriginalStateRecord(bytes:bytes,defined:mask)
             let memory = OriginalMenuPresentationMemory(replayPointers:try Session.State.slice(full,0xb8a8,8))
             var state = try Session.State(full:full,memory:memory,front:.init(interface:rules.interface),frontSurfaces:[:],
-                earlyScreen:.init(),libraryText:.init(),random:owner.random,screenBody:nil)
+                earlyScreen:.init(),libraryText:.init(),random:owner.random,screenBody:nil,branding:rules.branding)
             state.graphics = bridge.graphics
             let loop = try Session.Loop(baseline:owner.random.state,counter:full.integer(at:0xb580,as:UInt32.self))
             let menu = try Session(state:state,loop:loop)

@@ -24,24 +24,27 @@ public enum OriginalWindowInitialization {
     /// helper's own field writes. It is not a completed expected descriptor or
     /// recovered WinMain stack. Callers must resolve its provenance explicitly.
     /// Buffer platform effects: a thrown adapter/backing error rolls back globals.
+    /// `branding`: the game's window class and title (ENGINE_SPLIT E10).
     public static func initialize(instance: UInt32, show: Int32,
         globals: inout OriginalStateRecord,
         backing: (String, Int) throws -> [UInt8],
         perform: (Request) throws -> Response,
-        store: OriginalWindowInput.Store = { _,_ in }) throws -> Result {
-        try run(wrapperInstance: instance,globals: &globals,backing: backing,perform: perform,store: store)
+        store: OriginalWindowInput.Store = { _,_ in },
+        branding: OriginalGameRules.Branding = .lf2) throws -> Result {
+        try run(wrapperInstance: instance,globals: &globals,backing: backing,perform: perform,store: store,branding: branding)
     }
     /// Whole43bdd0 without43bec0's instance store and extra ShowWindow. The
     /// lifecycle caller supplies its own previously initialized instance global.
     public static func configure(globals: inout OriginalStateRecord,
         backing: (String, Int) throws -> [UInt8],
         perform: (Request) throws -> Response,
-        store: OriginalWindowInput.Store = { _,_ in }) throws -> Result {
-        try run(wrapperInstance: nil,globals: &globals,backing: backing,perform: perform,store: store)
+        store: OriginalWindowInput.Store = { _,_ in },
+        branding: OriginalGameRules.Branding = .lf2) throws -> Result {
+        try run(wrapperInstance: nil,globals: &globals,backing: backing,perform: perform,store: store,branding: branding)
     }
     private static func run(wrapperInstance: UInt32?,globals: inout OriginalStateRecord,
         backing: (String, Int) throws -> [UInt8],perform: (Request) throws -> Response,
-        store: OriginalWindowInput.Store) throws -> Result {
+        store: OriginalWindowInput.Store,branding: OriginalGameRules.Branding) throws -> Result {
         guard globals.byteCount == OriginalMatchPreparation.globalSize else {
             throw OriginalStateError.invalidStorage("Window initialization globals extent")
         }
@@ -107,7 +110,7 @@ public enum OriginalWindowInitialization {
             let handle = try bits(call("createWindow",[
                 fullscreen ? 8 : 0,0x447634,0x447620,fullscreen ? 0x80000000 : 0x10cb0000,
                 fullscreen ? 0 : 0x80000000,fullscreen ? 0 : 5,width,height,0,0,instance,0],
-                strings: [Array("Marti".utf8),Array("Little Fighter 2".utf8)]).result)
+                strings: [branding.windowClass,branding.windowTitle]).result)
             if !fullscreen && handle != 0 { _ = try numeric("updateWindow",[handle]) }
             return handle
         }

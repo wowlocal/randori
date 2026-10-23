@@ -6,17 +6,41 @@
 /// command word 3 (E6a, docs/evidence/es-e6a-classification.json). So NTSD's
 /// profile composes them unchanged. A game supplies its interface (names and
 /// rectangles of its content); LF2 2.0a's special moves are the default
-/// (OriginalLF2CharacterAISpecial, E6c), and LF2 2.0a has no library (E6d).
+/// (OriginalLF2CharacterAISpecial, E6c), LF2 2.0a has no library (E6d), and its
+/// strings are the default branding (E10).
 extension OriginalGameRules {
     /// LF2 2.0a's rules with a game's interface and, by default, LF2 2.0a's special
-    /// moves and no library.
+    /// moves, no library and LF2 2.0a's branding.
     public static func lf2(profile: String, interface: Interface,
                            characterAISpecial: any OriginalCharacterAISpecial = OriginalLF2CharacterAISpecial(),
-                           library: OriginalLibData? = nil) -> OriginalGameRules {
+                           library: OriginalLibData? = nil, branding: Branding = .lf2) -> OriginalGameRules {
         OriginalGameRules(profile: profile, reflection: .lf2, armour: .lf2, interaction: .lf2, impact: .lf2, items: .lf2, roster: .lf2,
                           modes: .lf2, physics: .lf2, drawing: .lf2, effects: .lf2, lifecycle: .lf2, fusion: .lf2, weaponBreak: .lf2,
-                          interface: interface, characterAI: .lf2, characterAISpecial: characterAISpecial, library: library)
+                          interface: interface, characterAI: .lf2, characterAISpecial: characterAISpecial, library: library,
+                          branding: branding)
     }
+}
+
+extension OriginalGameRules.Branding {
+    /// LF2 2.0a's strings, as its EXE passes them: the window class and title
+    /// (401b00/401bf0), the quit caption (43b3d0), the replay rejections
+    /// (4326c7..), the credit lines (decoded from OriginalFrontScreenBody.literals)
+    /// and their links (OriginalFrontScreenBody.links[0...2]), the main menu's,
+    /// CONTROL SETTINGS', the recording screens', the loading panel's and the
+    /// network menu's URLs, and background 99's name (41233b..). Built without
+    /// the public initializer's checks; OriginalGameBrandingTests runs them on it.
+    public static let lf2 = Self(validated: Array("Marti".utf8), windowTitle: Array("Little Fighter 2".utf8),
+        shortName: Array("LF2".utf8),
+        credits: [Array("by Marti Wong, Starsky Wong".utf8), Array("1999-2008, all rights reserved".utf8),
+                  Array("http://www.LittleFighter.com".utf8)],
+        creditLinks: [Array("http://littlefighter.com".utf8), Array("http://martiwong.com".utf8), Array("http://lf2.net/starsky".utf8)],
+        website: Array("http://littlefighter.com".utf8),
+        controlHelp: Array("http://www.littlefighter.com/control_index.html".utf8),
+        recordingHelp: Array("http://www.littlefighter.com/record".utf8),
+        challenge: Array("http://www.littlefighter.com/challenge".utf8),
+        advertise: Array("http://www.littlefighter.com/advertise".utf8),
+        forum: Array("http://lf2.net/forum".utf8),
+        builtInBackgroundName: Array("Lee On Road".utf8))
 }
 
 extension OriginalGameRules.Reflection {

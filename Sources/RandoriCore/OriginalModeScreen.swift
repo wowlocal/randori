@@ -25,15 +25,17 @@ public enum OriginalModeScreen {
         draw: ([UInt32],OriginalStateRecord,OriginalMenuPresentationMemory) throws -> Void,
         observe: (OriginalFrontScreenEvent) throws -> Void = { _ in }) throws -> OriginalModeScreenExit {
         var libraryText: OriginalLibSurfaceText?
+        let branding = state.catalog.rules.branding
         return try execute(world:state.world,actors:state.actors,globals:&state.globals,memory:&memory,
             local:&local,libraryText:&libraryText,worldAddress:worldAddress,target:target,input:input,
             fillBacking:fillBacking,background:background,update:update,
-            panel:{ state,_ in try panel(&state) },draw:draw,observe:observe)
+            panel:{ state,_ in try panel(&state) },draw:draw,observe:observe,branding:branding)
     }
 
     /// Same whole screen using the bundled library text replacement. World and
     /// Actor records are read-only; the screen does not consume the DAT catalog.
     /// Globals, bitmap ownership, local bytes and retained DC commit together.
+    /// `branding`: the game's credit lines and links (ENGINE_SPLIT E10).
     public static func advanceWithLibrary(world: OriginalStateRecord, actors: [OriginalStateRecord],
         globals: inout OriginalStateRecord, memory: inout OriginalMenuPresentationMemory,
         local: inout OriginalStateRecord, libraryText: inout OriginalLibSurfaceText,
@@ -43,11 +45,12 @@ public enum OriginalModeScreen {
         update: (inout OriginalStateRecord) throws -> Void,
         panel: (inout OriginalStateRecord) throws -> Void,
         draw: ([UInt32],OriginalStateRecord,OriginalMenuPresentationMemory) throws -> Void,
-        observe: (OriginalFrontScreenEvent) throws -> Void = { _ in }) throws -> OriginalModeScreenExit {
+        observe: (OriginalFrontScreenEvent) throws -> Void = { _ in },
+        branding: OriginalGameRules.Branding = .lf2) throws -> OriginalModeScreenExit {
         var text: OriginalLibSurfaceText? = libraryText
         let result = try execute(world:world,actors:actors,globals:&globals,memory:&memory,local:&local,
             libraryText:&text,worldAddress:worldAddress,target:target,input:input,fillBacking:fillBacking,
-            background:background,update:update,panel:{ state,_ in try panel(&state) },draw:draw,observe:observe)
+            background:background,update:update,panel:{ state,_ in try panel(&state) },draw:draw,observe:observe,branding:branding)
         libraryText = text!
         return result
     }
@@ -65,7 +68,8 @@ public enum OriginalModeScreen {
         milliseconds: () throws -> UInt32,
         draw: ([UInt32],OriginalStateRecord,OriginalMenuPresentationMemory) throws -> Void,
         playback: ((inout OriginalStateRecord,inout OriginalMenuPresentationMemory) throws -> Void)? = nil,
-        observe: (OriginalFrontScreenEvent) throws -> Void = { _ in }) throws -> OriginalModeScreenExit {
+        observe: (OriginalFrontScreenEvent) throws -> Void = { _ in },
+        branding: OriginalGameRules.Branding = .lf2) throws -> OriginalModeScreenExit {
         var text: OriginalLibSurfaceText? = libraryText
         let result = try execute(world:world,actors:actors,globals:&globals,memory:&memory,local:&local,
             libraryText:&text,worldAddress:worldAddress,target:target,input:input,fillBacking:fillBacking,
@@ -78,7 +82,7 @@ public enum OriginalModeScreen {
                         }
                         return allocation.storage
                     },milliseconds:milliseconds,drawBitmap:{ args,globals in try draw(args,globals,owned) },observe:observe)
-            },draw:draw,observe:observe)
+            },draw:draw,observe:observe,branding:branding)
         libraryText = text!
         return result
     }
@@ -93,7 +97,7 @@ public enum OriginalModeScreen {
         playback: ((inout OriginalStateRecord,inout OriginalMenuPresentationMemory) throws -> Void)? = nil,
         panel: (inout OriginalStateRecord,OriginalMenuPresentationMemory) throws -> Void,
         draw: ([UInt32],OriginalStateRecord,OriginalMenuPresentationMemory) throws -> Void,
-        observe: (OriginalFrontScreenEvent) throws -> Void) throws -> OriginalModeScreenExit {
+        observe: (OriginalFrontScreenEvent) throws -> Void,branding: OriginalGameRules.Branding) throws -> OriginalModeScreenExit {
         guard local.byteCount == 0x704 else { throw OriginalStateError.invalidStorage("Mode screen local extent") }
         var state = globals, owned = memory, scratch = local, textState = libraryText
         let base = OriginalMatchPreparation.globalBase
@@ -137,7 +141,7 @@ public enum OriginalModeScreen {
         func link(_ index: Int) throws {
             if try word(0x4513c4) == 0 && word(0x457580) == 1 {
                 try write(0x457580,0);try sound();try emit("sleep",[300])
-                try emit("shell",[0,0,0,1],[OriginalFrontScreenBody.links[3].bytes,OriginalFrontScreenBody.links[index].bytes])
+                try emit("shell",[0,0,0,1],[OriginalFrontScreenBody.links[3].bytes,branding.creditLinks[index]])
             }
         }
         func highlight(_ source: Int,_ terminator: Int,_ x: Int32,_ y: Int32) throws {
@@ -155,7 +159,7 @@ public enum OriginalModeScreen {
         try update(&state)
         try bitmap(0x4511ac,0,word(0x453da4),-1)
         try bitmap(0x4511a0,153,word(0x453da4) &+ 96,1)
-        for (index,offset) in [0x28,0x44,0x78].enumerated() { try put(offset,OriginalFrontScreenBody.literals[index].bytes) }
+        for (index,offset) in [0x28,0x44,0x78].enumerated() { try put(offset,branding.encodedCredits[index]) }
         let y = try word(0x45757c) &+ 491
         for offset in [0x28,0x44,0x78] {
             var i = 0
